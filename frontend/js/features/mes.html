@@ -1,0 +1,7 @@
+<script>
+    const rMes = () => {
+      const w = $('#view-mes .wrap'), st = w ? [w.scrollTop, w.scrollLeft] : null;
+      $('#view-mes').innerHTML = tableHTML(['ent', 'sai']);
+      const n = $('#view-mes .wrap'); if (st && n) { n.scrollTop = st[0]; n.scrollLeft = st[1] } sizePanel()
+    };
+</script>

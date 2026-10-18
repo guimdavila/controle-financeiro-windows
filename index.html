@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Controle financeiro da casa</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <?!= include('frontend/css/base') ?>
+  <?!= include('frontend/css/grid') ?>
+  <?!= include('frontend/css/resumo') ?>
+  <?!= include('frontend/css/pendencias') ?>
+  <?!= include('frontend/css/mes') ?>
+  <?!= include('frontend/css/patrimonio') ?>
+  <?!= include('frontend/css/componentes') ?>
+  <style id="focusStyle"></style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+
+<body>
+  <?!= include('frontend/partials/layout') ?>
+
+  <?!= include('frontend/partials/dialogs') ?>
+
+  <?!= include('frontend/js/data/seed') ?>
+  <?!= include('frontend/js/data/edicao') ?>
+  <?!= include('frontend/js/data/constantes') ?>
+  <?!= include('frontend/js/core/utils') ?>
+  <?!= include('frontend/js/core/estrutura') ?>
+  <?!= include('frontend/js/core/estado') ?>
+  <?!= include('frontend/js/services/api') ?>
+  <?!= include('frontend/js/services/snapshot') ?>
+  <?!= include('frontend/js/services/sync') ?>
+  <?!= include('frontend/js/features/categorias') ?>
+  <?!= include('frontend/js/core/calculos') ?>
+  <?!= include('frontend/js/features/tabelas') ?>
+  <?!= include('frontend/js/features/cartao') ?>
+  <?!= include('frontend/js/features/outros') ?>
+  <?!= include('frontend/js/features/resumo') ?>
+  <?!= include('frontend/js/features/mes') ?>
+  <?!= include('frontend/js/features/patrimonio') ?>
+  <?!= include('frontend/js/features/pendencias') ?>
+  <?!= include('frontend/js/features/anos') ?>
+  <?!= include('frontend/js/ui/render') ?>
+  <?!= include('frontend/js/features/fatura-pdf') ?>
+  <?!= include('frontend/js/features/importacao') ?>
+  <?!= include('frontend/js/features/comentarios') ?>
+  <?!= include('frontend/js/ui/eventos') ?>
+  <?!= include('frontend/js/main') ?>
+</body>
+
+</html>

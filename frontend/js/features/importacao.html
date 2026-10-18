@@ -1,0 +1,98 @@
+<script>
+    /* ---------- importação do TXT ---------- */
+    const CATN = {}; function buildCatn() { Object.keys(CATN).forEach(k => delete CATN[k]); CATS.forEach(c => CATN[norm(c)] = c); CATN['delivery'] = 'Deliverys'; CATN['delivery de comida'] = 'Deliverys' } buildCatn();
+    const MONEY_FULL = /^-?\s*(R\$)?\s*-?\d{1,3}(\.\d{3})*,\d{2}$|^-?\s*(R\$)?\s*-?\d+\.\d{2}$|^-?\s*(R\$)?\s*-?\d+$/;
+    const MONEY_G = /-?\s*R\$\s*-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d{1,3}(?:\.\d{3})*,\d{2}(?!\d)|-?\d+\.\d{2}(?!\d)/g;
+    const RULES = [[/ifood|ifd\*/, 'Deliverys'], [/\biof\b|anuidade|juros|multa|encargo/, 'Impostos e taxas'],[/uber|\b99\b|posto|shell|estaciona|combust|pedagio|park\b/, 'Transporte'], [/farm|drog|raia/, 'Farmácia'], [/supermerc|mercado(?! livre)|padaria|panific|atacad|frutaria|hortifruti|cooper|kunz|bistek|nutry|acougue|pescados/, 'Supermercado'], [/shopee|amazon|shein|aliexpress|mercado livre|mercadolivre|magalu|americanas/, 'Ecommerce'], [/wellhub|gympass|academia|smartfit/, 'Atividade Física'], [/netflix|spotify|disney|hbo|youtube|apple|prime video/, 'Assinatura de streaming'], [/restaurante|pizzaria|lanchonete|churrasc|sushi|cafe|cacau/, 'Restaurante'], [/cinema|ingresso|show|parque/, 'Entretenimento'], [/hotel|passagem|airbnb|booking|decolar/, 'Viagem'], [/curso|escola|livraria|udemy/, 'Educação']];
+    const mkey = n => norm(n).replace(/parcela.*$/, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+    function learned() {
+      const c = {}; S.tx.forEach(t => { const k = mkey(t.n); if (!k) return; (c[k] = c[k] || {})[t.c] = (c[k][t.c] || 0) + 1 });
+      const o = {}; for (const k in c) o[k] = Object.entries(c[k]).sort((a, b) => b[1] - a[1])[0][0]; return o
+    }
+    function guess(name, L) {
+      const k = mkey(name);
+      if (/ifood|ifd\*/.test(norm(name))) return 'Deliverys';
+      if (L[k]) return L[k];
+      if (k.length >= 4) { const hit = Object.keys(L).find(x => x.length >= 4 && (k.startsWith(x) || x.startsWith(k))); if (hit) return L[hit] }
+      const n = norm(name); for (const [re, c] of RULES) if (re.test(n)) return c; return 'Outros'
+    }
+    function parseLine(line) {
+      let parts = null; for (const d of ['\t', '|', ';']) if (line.includes(d)) { parts = line.split(d).map(s => s.trim()).filter(Boolean); break }
+      parts = parts || [line]; let v = null, cat = null, name = [];
+      if (parts.length > 1) { for (const p of parts) { if (v == null && MONEY_FULL.test(p)) v = parseBR(p); else if (!cat && CATN[norm(p)]) cat = CATN[norm(p)]; else name.push(p) } }
+      else {
+        let s = parts[0]; const mm = [...s.matchAll(MONEY_G)];
+        if (mm.length) { const l = mm[mm.length - 1]; v = parseBR(l[0]); s = s.slice(0, l.index) + ' ' + s.slice(l.index + l[0].length) }
+        for (const c of [...CATS, 'Delivery']) { const re = new RegExp('(^|[\\s—–|-])' + c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$', 'i'); if (re.test(s)) { cat = CATN[norm(c)]; s = s.replace(re, ''); break } }
+        name = [s]
+      }
+      if (v == null) return null;
+      let n = name.join(' ').replace(/\s{2,}/g, ' ').trim().replace(/[—–|-]\s*$/, '').trim(), d = '';
+      let m = n.match(/\(?\b(\d{2}\/\d{2})(?:\/\d{2,4})?\)?\s*$/);
+      if (m) { d = m[1]; n = n.slice(0, m.index).trim() } else if ((m = n.match(/^(\d{2}\/\d{2})(?:\/\d{2,4})?\s+/))) { d = m[1]; n = n.slice(m[0].length).trim() }
+      if (!n) return null; return { n, d, v: r2(v), c: cat }
+    }
+    function parseTxt(text) {
+      const L = learned(), rows = [], bad = [];
+      for (let line of text.split(/\r?\n/)) {
+        line = line.trim(); if (!line) continue;
+        if (/^[\s|:\-–—=+]+$/.test(line)) continue;
+        if (/^\|?\s*(nome do gasto|descri[cç][aã]o|estabelecimento|data)\b/i.test(line)) continue;
+        const r = parseLine(line); if (!r) { bad.push(line); continue }
+        const f = finalName(r.n); r.raw = r.n; r.n = f.n.slice(0, 80);
+        if (r.c) r.auto = false; else if (f.c) { r.c = f.c; r.auto = false } else { r.c = guess(r.n, L); r.auto = true } rows.push(r)
+      }
+      return { rows, bad }
+    }
+    /* depois de criar/alterar regras, reaplica nos nomes da prévia que não foram editados à mão */
+    function reNorm() {
+      if (!imp.rows.length) return; const L = learned();
+      imp.rows.forEach(r => {
+        if (!r.raw || r.edited) return; const f = finalName(r.raw); r.n = f.n.slice(0, 80);
+        if (f.c) { r.c = f.c; r.auto = false } else if (r.auto) r.c = guess(r.n, L)
+      });
+      renderImp()
+    }
+    function openImport() {
+      $('#impMonth').innerHTML = MES.map((n, i) => `<option value="${i}"${i === ui.cm ? ' selected' : ''}>${n}</option>`).join('');
+      $('#impCard').innerHTML = SAI.filter(isCardRow).map(i => `<option value="${i}"${i === ui.cardId ? ' selected' : ''}>${esc(DEF[i].l)}</option>`).join('');
+      $('#impText').value = ''; $('#impFile').value = ''; $('#impText').hidden = false; $('#impTextLbl').hidden = false; $('#impRawBox').hidden = true;
+      imp = { rows: [], bad: [] }; renderImp(); $('#imp').showModal()
+    }
+    function analyze() { const r = parseTxt($('#impText').value); imp = r; renderImp() }
+    function renderImp() {
+      const n = imp.rows.length, tot = r2(imp.rows.reduce((a, r) => a + r.v, 0));
+      let sum = n ? `${n} lançamentos reconhecidos · total ${fmtR(tot)}` : '';
+      if (n && imp.decl != null) sum += Math.abs(imp.decl - tot) < 0.01 ? ' · confere com o total da fatura' : ` · a fatura informa ${fmtR(imp.decl)} (diferença de ${fmtR(r2(imp.decl - tot))}: confira as linhas)`;
+      $('#impSum').textContent = sum;
+      const p = $('#impPrev'); p.hidden = !n;
+      p.innerHTML = imp.rows.map((r, i) => `<div class="tx imp"><span class="d">${esc(r.d) || '–'}</span><input class="n" data-in="${i}" value="${esc(r.n)}" title="${esc(r.raw && r.raw !== r.n ? 'Na fatura: ' + r.raw : r.n)}" maxlength="80" aria-label="Nome do lançamento">${catSel(r.c, `data-ic="${i}"${r.auto ? ' class="sug" title="Categoria sugerida pelo histórico das suas faturas"' : ''}`)}<span style="text-align:right">${fmtN(r.v)}</span><button class="x rg" data-act="normfrom" data-i="${i}" aria-label="Criar regra de normalização para ${esc(r.raw || r.n)}" title="Criar regra de normalização"><svg class="i" aria-hidden="true"><use href="#i-tag" /></svg></button><button class="x" data-act="delic" data-i="${i}" aria-label="Remover ${esc(r.n)} da importação" title="Remover">×</button></div>`).join('');
+      $('#impBadBox').hidden = !imp.bad.length; $('#impBad').textContent = imp.bad.join('\n');
+      $('#impBadBox').querySelector('summary').textContent = `${imp.bad.length} ${imp.badLbl || 'linhas não reconhecidas (ignoradas)'}`;
+      $('#impOk').disabled = !n; $('#impOk').textContent = n ? `Importar ${n} lançamentos` : 'Importar';
+      $('#impHint').textContent = n ? 'Dá para corrigir nomes e categorias ou remover linhas antes de importar. Categorias sugeridas têm borda tracejada.' : ''
+    }
+    async function readFile(f) {
+      const buf = await f.arrayBuffer(); let s;
+      if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) {
+        $('#impSum').textContent = 'Lendo o PDF…'; $('#impPrev').hidden = true;
+        let lines; try { lines = await pdfLines(buf) } catch (e) { $('#impSum').textContent = ''; toast('Não foi possível ler o PDF: ' + errTxt(e)); return }
+        $('#impText').value = ''; $('#impText').hidden = true; $('#impTextLbl').hidden = true;
+        $('#impRawBox').hidden = false; $('#impRaw').textContent = lines.join('\n');
+        imp = parseFatura(lines); renderImp();
+        if (!imp.rows.length) toast('Nenhum lançamento encontrado no PDF. Veja o texto extraído no fim da janela.');
+        return
+      }
+      $('#impText').hidden = false; $('#impTextLbl').hidden = false; $('#impRawBox').hidden = true;
+      try { s = new TextDecoder('utf-8', { fatal: true }).decode(buf) } catch (e) { s = new TextDecoder('windows-1252').decode(buf) }
+      $('#impText').value = s; analyze()
+    }
+    function confirmImport() {
+      const m = +$('#impMonth').value, card = $('#impCard').value || 'itau';
+      if ($('#impMode').value === 'replace') S.tx = S.tx.filter(t => !(t.m === m && cardTx(t, card)));
+      imp.rows.forEach((r, i) => S.tx.push({ id: 'i' + Date.now().toString(36) + i, m, ...(card !== 'itau' ? { card } : {}), n: r.n, d: r.d, c: r.c, v: r.v }));
+      save(); ui.cm = m; ui.cardOpen = true; ui.cardId = card; if (ui.focus !== 'all') ui.focus = m; $('#imp').close();
+      ui.tab = 'mes'; render(); toast(`${imp.rows.length} lançamentos importados em ${MES[m]}`)
+    }
+
+</script>

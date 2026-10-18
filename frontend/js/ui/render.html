@@ -1,0 +1,30 @@
+<script>
+    function renderMonths() {
+      $('#months').hidden = ui.tab === 'pend';
+      const ic = n => `<svg class="i" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+      $('#barTitle').textContent = TABTITLE[ui.tab];
+      $('#acts').innerHTML = ui.tab === 'mes' ? `<button class="btn" data-act="cats">${ic('tag')}Categorização</button>`
+        : ui.tab === 'resumo' ? `<button class="btn" data-act="pans">${ic('edit')}Editar painéis</button>`
+        : ui.tab === 'pat' ? `<button class="btn" data-act="mods">${ic('edit')}Editar módulos</button>` : '';
+      $('#months').innerHTML = `<button data-act="focus" data-f="all" aria-pressed="${ui.focus === 'all'}">Ano todo</button><span class="sep"></span>` + AB.map((a, i) => `<button data-act="focus" data-f="${i}" aria-pressed="${ui.focus === i}" title="${MES[i]}">${a}</button>`).join('')
+    }
+    const TABTITLE = { resumo: 'Resumo', mes: 'Mês a mês', pat: 'Reservas e patrimônio', pend: 'Metas de compra' };
+    function applyFocus() { const f = ui.focus; $('#focusStyle').textContent = f === 'all' ? '' : `.grid [data-m]:not([data-m="${f}"]){display:none}.grid .agg{display:none}` }
+    function sizePanel() { const w = $('#view-mes .wrap'); if (w) document.documentElement.style.setProperty('--wrapw', (w.clientWidth - 2) + 'px') }
+    function render() {
+      $$('nav.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === ui.tab));
+      ['resumo', 'mes', 'pat', 'pend'].forEach(t => $('#view-' + t).hidden = t !== ui.tab);
+      renderYears(); renderMonths();
+      ({ resumo: rResumo, mes: rMes, pat: rPat, pend: rPend })[ui.tab]();
+      applyFocus(); sizePanel(); updateCalcs()
+    }
+    addEventListener('resize', sizePanel);
+    /* popover = camada superior do navegador: o aviso aparece acima de modais e do desfoque do fundo */
+    let tt; function toast(m) {
+      const t = $('#toast'); t.textContent = m; clearTimeout(tt);
+      try { if (t.matches(':popover-open')) t.hidePopover(); t.showPopover() } catch (e) { }
+      t.classList.add('on');
+      tt = setTimeout(() => { t.classList.remove('on'); tt = setTimeout(() => { try { t.hidePopover() } catch (e) { } }, 250) }, 2600)
+    }
+
+</script>

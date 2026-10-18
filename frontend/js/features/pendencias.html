@@ -1,0 +1,14 @@
+<script>
+    /* ---------- pendências ---------- */
+    function pendSums() {
+      const t = S.pend.reduce((a, p) => a + (p.v || 0), 0), o = S.pend.filter(p => !p.ok).reduce((a, p) => a + (p.v || 0), 0);
+      $('#pTot').textContent = fmtR(r2(t)); $('#pOpen').textContent = fmtR(r2(o))
+    }
+    function rPend() {
+      let h = `<h2>Metas de compra</h2><p class="hint" style="margin:-4px 0 8px;color:var(--muted);font-size:13px">Compras e despesas grandes que ainda explicam o “Outros” dos meses. Marque quando já tiver pago.</p><div class="list">`;
+      h += S.pend.map(p => `<div class="li${p.ok ? ' done' : ''}"><input type="checkbox" data-pf="ok" data-id="${p.id}" ${p.ok ? 'checked' : ''} aria-label="Pago"><input type="text" data-pf="n" data-id="${p.id}" value="${esc(p.n)}" aria-label="Item"><input class="money" data-pf="v" data-id="${p.id}" value="${p.v == null ? '' : nf.format(p.v)}" placeholder="Valor" inputmode="decimal" aria-label="Valor"><button class="x" data-act="delp" data-id="${p.id}" aria-label="Excluir" title="Excluir">×</button></div>`).join('');
+      h += `<div class="lsum"><span><small>Total</small><b id="pTot"></b></span><span><small>Em aberto</small><b id="pOpen"></b></span><button class="btn sm" style="margin-left:auto" data-act="addp">+ Item</button></div></div>`;
+      $('#view-pend').innerHTML = h; pendSums()
+    }
+
+</script>

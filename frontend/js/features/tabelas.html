@@ -1,0 +1,106 @@
+<script>
+    /* ---------- tabelas ---------- */
+    function rawDisplay(raw) { const v = ev(raw); return v == null ? '' : nf.format(v) }
+    const AGGX = [
+      { k: 'A', l: 'Média', t: 'Média dos meses preenchidos' },
+      { k: 'PY', l: 'Total ano ant.', t: 'Total do ano anterior, somando só os mesmos meses já preenchidos neste ano' },
+      { k: 'PM', l: () => `${AB[curM]} ano ant.`, t: 'Valor do mês atual no ano anterior, para comparar com o mês atual deste ano' },
+      { k: 'P', l: 'Projeção', t: 'Projeção do ano: média × 12 meses' }
+    ];
+    function tableHTML(keys) {
+      keys = [].concat(keys); const multi = keys.length > 1, t0 = T[keys[0]], stock = !!t0.stock;
+      let h = `<section class="blk ${multi ? 'mes' : keys[0]}${stock ? ' inv' : ''}"${stock && S.mods[keys[0]] && S.mods[keys[0]].color ? ` style="--inv:${esc(S.mods[keys[0]].color)}"` : ''}>${multi ? `<div class="pleg"><span><i class="a"></i>Em aberto</span><span><i class="b"></i>Pago</span></div>` : `<h2>${t0.title}</h2>`}<div class="wrap${multi ? ' tall' : ''}"><table class="grid" data-t="${keys.join('-')}"><thead><tr><th class="lbl">Tipo</th>`;
+      for (let m = 0; m < 12; m++)h += `<th data-m="${m}" title="${MES[m]}">${AB[m]}</th>`;
+      h += stock ? `<th class="agg">Atual</th>` : `<th class="agg" title="Total do ano · passe o mouse para ver mais">Total</th>${AGGX.map(c => `<th class="agg x" title="${c.t}">${typeof c.l === 'function' ? c.l() : c.l}</th>`).join('')}`;
+      h += `</tr></thead><tbody>`;
+      for (const key of keys) {
+        const t = T[key]; let pastTot = false;
+        if (multi) h += `<tr class="sec s-${key}"><th class="lbl">${t.title}</th><td colspan="17"></td></tr>`;
+        for (const d of t.rows) {
+          const isCard = key === 'sai' && isCardRow(d.id), isOut = d.id === 'outs', isOutE = d.id === 'oute', payable = key === 'sai' && SAI.includes(d.id);
+          if (d.k === 'payall') {
+            h += `<tr class="payrow s-${key}"><th scope="row" class="lbl">${d.l}</th>`;
+            for (let m = 0; m < 12; m++)h += `<td data-m="${m}"><button class="btn sm" data-act="payall" data-m="${m}" title="Marca ou desmarca todos os gastos de ${MES[m]}">Tudo</button></td>`;
+            h += `<td class="agg"></td>${AGGX.map(() => `<td class="agg x"></td>`).join('')}</tr>`; continue
+          }
+          if (multi && (d.id === 'totE' || d.id === 'totS')) h += addLineRows(key);
+          if (d.id === 'totE' || d.id === 'totS') pastTot = true;
+          const mov = multi && d.k === 'in' && !pastTot;
+          h += `<tr class="${d.cls || ''} s-${key}"${mov ? ` data-row="${d.id}" data-g="${key}"` : ''}><th scope="row" class="lbl">`;
+          {
+            const inp = `<input class="lblin" data-ln="${d.id}" value="${esc(d.l)}" maxlength="60" aria-label="Nome da linha" title="Clique para renomear">`,
+              del = canDel(d) ? `<button class="x" data-act="${d.custom ? 'delln' : 'delrow'}" data-id="${d.id}" aria-label="Excluir linha ${esc(d.l)}" title="Excluir linha">×</button>` : '';
+            const xp = isCard ? { a: 'togglecard', o: ui.cardOpen && ui.cardId === d.id, t: 'lançamentos', d: 'Ver tudo que foi gasto no cartão, por categoria' } : isOut ? { a: 'toggleouts', o: ui.outsOpen, t: 'detalhar', d: 'Detalhar os gastos que compõem Outros' } : isOutE ? { a: 'toggleoute', o: ui.outeOpen, t: 'detalhar', d: 'Detalhar as entradas que compõem Outros' } : null;
+            const grip = mov ? `<span class="grip" tabindex="0" role="button" data-grip="${d.id}" aria-label="Mover linha ${esc(d.l)} (arraste, ou Alt + setas)" title="Arraste para mover · Alt+↑/↓"><svg width="10" height="14" viewBox="0 0 10 14" aria-hidden="true" fill="currentColor"><circle cx="2.5" cy="2.5" r="1.4"/><circle cx="7.5" cy="2.5" r="1.4"/><circle cx="2.5" cy="7" r="1.4"/><circle cx="7.5" cy="7" r="1.4"/><circle cx="2.5" cy="11.5" r="1.4"/><circle cx="7.5" cy="11.5" r="1.4"/></svg></span>` : '';
+            h += xp ? `<div class="lblwrap">${grip}<button class="exp" data-act="${xp.a}" data-id="${d.id}" aria-expanded="${!!xp.o}" aria-label="${xp.d}" title="${xp.d}"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>${inp}<button class="exp tagb" data-act="${xp.a}" data-id="${d.id}" aria-expanded="${!!xp.o}" title="${xp.d}"><span class="tag">${xp.t}</span></button>${del}</div>` : `<div class="lblwrap">${grip}${inp}${del}</div>`
+          }
+          h += `</th>`;
+          for (let m = 0; m < 12; m++) {
+            const pb = payable ? `<button class="pay" data-act="pay" data-id="${d.id}" data-m="${m}" aria-pressed="false" aria-label="Pago: ${esc(d.l)} em ${MES[m]}" title="Marcar como pago / em aberto"></button>` : '';
+            const tdA = payable ? ` class="pc" data-pay="${d.id}"` : '';
+            const cmA = d.k === 'in' ? ` data-cm="${d.id}"` : '';
+            const cb = d.k === 'in' ? `<button class="cmb" data-act="cmadd" data-id="${d.id}" data-m="${m}" aria-label="Adicionar comentário em ${esc(d.l)}, ${MES[m]}" title="Adicionar comentário"><svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M1.5 1.5h9v6h-5l-3 2.5v-2.5h-1z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></button>` : '';
+            if (d.k === 'in') {
+              if ((isCard && hasTx(m, d.id)) || (isOut && hasOut(m)) || (isOutE && hasOute(m))) h += `<td data-m="${m}"${payable ? tdA.replace('class="pc"', 'class="pc num"') : ' class="num"'}${cmA}>${pb}${cb}<button class="amt" data-act="${isCard ? 'card' : isOut ? 'outs' : 'oute'}" data-m="${m}"${isCard ? ' data-id="' + d.id + '"' : ''} data-calc="${d.id}" data-k="${m}" title="Ver lançamentos de ${MES[m]}">${txt(d.id, String(m))}</button></td>`;
+              else {
+                const raw = S.vals[d.id][m]; const ex = typeof raw === 'string';
+                h += `<td data-m="${m}"${tdA}${cmA}>${pb}${cb}<input class="cell${ex ? ' expr' : ''}" data-id="${d.id}" data-m="${m}" value="${esc(rawDisplay(raw))}" placeholder="–" inputmode="decimal" autocomplete="off" aria-label="${esc(d.l)} em ${MES[m]}"${ex ? ` title="${esc(raw)}"` : ''}></td>`
+              }
+            } else h += `<td data-m="${m}" class="num calc" data-calc="${d.id}" data-k="${m}">${txt(d.id, String(m))}</td>`;
+          }
+          if (d.noagg) h += `<td class="agg"></td>${stock ? '' : AGGX.map(() => `<td class="agg x"></td>`).join('')}`;
+          else if (t.stock) h += `<td class="num calc agg" data-calc="${d.id}" data-k="L">${txt(d.id, 'L')}</td>`;
+          else h += `<td class="num calc agg" data-calc="${d.id}" data-k="S">${txt(d.id, 'S')}</td>${AGGX.map(c => `<td class="num calc agg x" data-calc="${d.id}" data-k="${c.k}">${txt(d.id, c.k)}</td>`).join('')}`;
+          h += `</tr>`;
+          if (isCard && ui.cardOpen && ui.cardId === d.id) h += `<tr class="cardpanel"><td colspan="18">${panelHTML(d.id)}</td></tr>`;
+          if (isOut && ui.outsOpen) h += `<tr class="outpanel"><td colspan="18">${outPanelHTML()}</td></tr>`;
+          if (isOutE && ui.outeOpen) h += `<tr class="outpanel"><td colspan="18">${outePanelHTML()}</td></tr>`;
+        }
+      }
+      return h + `</tbody></table></div>${delBar(keys)}</section>`
+    }
+
+    /* grava a ordem das linhas de um grupo (ent/sai); ids = ordem final das linhas movíveis */
+    function setOrder(k, ids) { S.ord[k] = ids; applyCustom(); save(); render() }
+    function moveRow(id, dir) {
+      const k = T.ent.rows.some(r => r.id === id) ? 'ent' : 'sai', t = T[k], ti = t.rows.findIndex(r => r.id === (k === 'ent' ? 'totE' : 'totS'));
+      const ids = t.rows.slice(0, ti).map(r => r.id), i = ids.indexOf(id), j = i + dir;
+      if (i < 0 || j < 0 || j >= ids.length) return false;
+      [ids[i], ids[j]] = [ids[j], ids[i]]; setOrder(k, ids); return true
+    }
+
+    function delBar(keys) {
+      const r = []; keys.forEach(k => ORIGR[k].forEach(d => { if (canDel(d) && isDel(d.id) && !SEM_RESTAURAR.includes(d.id)) r.push(d) }));
+      return r.length ? `<div class="delbar"><span>Linhas excluídas:</span>${r.map(d => `<button class="btn sm" data-act="restrow" data-id="${d.id}" title="Restaurar a linha com os valores que ela tinha">↺ ${esc(d.l)}</button>`).join('')}</div>` : ''
+    }
+    function delRow(id) {
+      const d = DEF[id]; if (!d || !canDel(d) || isDel(id)) return;
+      S.del.push(id); hideComment(); applyCustom(); save(); render(); toast('Linha “' + d.l + '” excluída · dá para restaurar abaixo da tabela')
+    }
+    function restRow(id) { S.del = S.del.filter(x => x !== id); applyCustom(); save(); render(); toast('Linha “' + DEF[id].l + '” restaurada') }
+    function addLineRows(k) {
+      const sai = k === 'sai', open = ui.addln === k;
+      let h = `<tr class="addln s-${k}"><th class="lbl"><button class="btn sm" data-act="addln" data-k="${k}" aria-expanded="${open}">+ Nova linha</button></th><td colspan="17"></td></tr>`;
+      if (open) h += `<tr class="lnpanel"><td colspan="18"><div class="panel"><div class="lnf${sai ? '' : ' ent'}"><input id="ln-n" placeholder="${sai ? 'Nome do novo gasto' : 'Nome da nova entrada'}" maxlength="60" aria-label="Nome da nova linha" autocomplete="off">${sai ? `<select id="ln-c" aria-label="Categoria no Resumo" title="Linha de cartão de crédito: a categoria vem de cada lançamento da fatura">${ALLCATS.map(c => `<option${c === 'Outros' ? ' selected' : ''}>${c}</option>`).join('')}</select>` : ''}${sai ? `<label class="chk" title="A linha fica expansível para anexar os lançamentos da fatura em PDF"><input type="checkbox" id="ln-card"> Cartão de crédito</label>` : ''}<button class="btn primary" data-act="addlnok" data-k="${k}">Adicionar linha</button><button class="btn" data-act="addln" data-k="${k}">Cancelar</button></div><p class="lnp">${sai ? 'A linha entra no total de saídas e na categoria escolhida do Resumo (dá para trocar depois em “Como cada gasto é classificado”).' : 'A linha entra no total de entradas.'} Para renomear ou excluir, use o nome na própria linha.</p></div></td></tr>`;
+      return h
+    }
+    function addLine(k) {
+      const n = ($('#ln-n')?.value || '').trim(); if (!n) { toast('Informe o nome da linha'); $('#ln-n')?.focus(); return }
+      const id = 'c' + Date.now().toString(36);
+      S.custom.push({ id, k, l: n }); S.vals[id] = Array(12).fill(null);
+      if (k === 'sai') { S.paid[id] = Array.from({ length: 12 }, (_, m) => paidDef(m)); const card = !!$('#ln-card')?.checked; S.rowcat[id] = card ? 'Outros' : ($('#ln-c')?.value || 'Outros'); if (card) S.cards.push(id) }
+      applyCustom(); ui.addln = null; save(); render();
+      const fm = ui.focus === 'all' ? curM : ui.focus; ($(`input.cell[data-id="${id}"][data-m="${fm}"]`) || $(`input.cell[data-id="${id}"]`))?.focus();
+      toast('Linha “' + n + '” adicionada')
+    }
+    function delLine(id) {
+      const c = S.custom.find(x => x.id === id); if (!c) return;
+      const has = (S.vals[id] || []).some(v => v != null && v !== '');
+      if (has && !confirm('Excluir a linha “' + c.l + '” e todos os valores lançados nela?')) return;
+      S.custom = S.custom.filter(x => x.id !== id); S.cards = S.cards.filter(x => x !== id); S.tx = S.tx.filter(t => !cardTx(t, id));
+      delete S.vals[id]; delete S.paid[id]; delete S.rowcat[id];
+      Object.keys(S.cm).forEach(k => { if (k.startsWith(id + '|')) delete S.cm[k] });
+      hideComment(); applyCustom(); save(); render(); toast('Linha excluída')
+    }
+
+</script>

@@ -1,0 +1,52 @@
+<script>
+    function val(id, m) {
+      const d = DEF[id]; if (isDel(id)) return null;
+      if (d.k === 'in') return isCardRow(id) ? cardVal(id, m) : id === 'outs' ? outsVal(m) : id === 'oute' ? outeVal(m) : ev(S.vals[id][m]);
+      if (d.k === 'sum') return sumN(d.of.map(x => val(x, m)));
+      switch (id) {
+        case 'btc': return val('bsal', m);
+        case 'brend': { const i = val('binv', m), s = val('bsal', m); return i && s != null ? s / i - 1 : null }
+        case 'saldo': { const a = val('totE', m), b = val('totS', m); return a == null && b == null ? null : r2((a || 0) - (b || 0)) }
+        case 'pago': { const v = SAI.filter(i => S.paid[i][m]).map(i => val(i, m)); return sumN(v) || (val('totS', m) != null ? 0 : null) }
+        case 'aberto': { const a = val('totS', m); return a == null ? null : r2(a - (val('pago', m) || 0)) }
+        case 'acum': { if (val('saldo', m) == null) return null; let t = 0; for (let k = 0; k <= m; k++)t += val('saldo', k) || 0; return r2(t) }
+      }
+      return null
+    }
+    function aggVal(id, mode) {
+      const a = []; for (let m = 0; m < 12; m++) { const v = val(id, m); if (v != null) a.push(v) }
+      if (!a.length) return null; const s = a.reduce((x, y) => x + y, 0);
+      return mode === 'S' ? r2(s) : mode === 'A' ? r2(s / a.length) : mode === 'P' ? r2(s / a.length * 12) : a[a.length - 1]
+    }
+    /* Ano anterior no mesmo período: soma só os meses que já têm valor no ano atual */
+    function prevVal(id) {
+      const prev = DB.years[Y - 1]; if (!prev || isDel(id)) return null;
+      const ms = []; for (let m = 0; m < 12; m++) if (val(id, m) != null) ms.push(m);
+      if (!ms.length) return null;
+      const cur = S; let t = 0, n = 0;
+      try { S = prev; ms.forEach(m => { const v = val(id, m); if (v != null) { t += v; n++ } }) } catch (e) { n = 0 } finally { S = cur }
+      return n ? r2(t) : null
+    }
+    /* Mesmo mês (o mês atual selecionado) no ano anterior */
+    function prevMonthVal(id) {
+      const prev = DB.years[Y - 1]; if (!prev || isDel(id)) return null;
+      const cur = S; let v = null;
+      try { S = prev; v = val(id, curM) } catch (e) { v = null } finally { S = cur }
+      return v
+    }
+    const cellVal = (id, k) => /^\d+$/.test(k) ? val(id, +k) : k === 'PY' ? prevVal(id) : k === 'PM' ? prevMonthVal(id) : aggVal(id, k);
+    const fmtK = (id, k, v) => DEF[id].pct ? fmtP(v) : fmtN(v);
+    const txt = (id, k) => fmtK(id, k, cellVal(id, k));
+    function updateCalcs() {
+      $$('td[data-cm]').forEach(td => td.classList.toggle('hascm', !!S.cm[td.dataset.cm + '|' + td.dataset.m]));
+      $$('td[data-pay]').forEach(td => {
+        const id = td.dataset.pay, m = +td.dataset.m || +td.querySelector('.pay').dataset.m, v = val(id, m), pd = S.paid[id][m];
+        td.classList.toggle('paid', v != null && !!pd); td.classList.toggle('unpaid', v != null && !pd); td.querySelector('.pay').setAttribute('aria-pressed', v != null && !!pd)
+      });
+      $$('[data-calc]').forEach(el => {
+        const id = el.dataset.calc, v = cellVal(id, el.dataset.k);
+        el.textContent = fmtK(id, el.dataset.k, v); el.classList.toggle('neg', v != null && v < 0)
+      })
+    }
+
+</script>

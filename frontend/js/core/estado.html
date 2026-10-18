@@ -1,0 +1,37 @@
+<script>
+    /* ---------- estado ---------- */
+    const fresh = () => JSON.parse(JSON.stringify(SEED));
+    const now = new Date(), curY = now.getFullYear();
+    const freshDB = () => ({ v: 2, cur: ANO0, years: { [ANO0]: fresh() } });
+    let DB = freshDB();
+    let Y = +DB.cur; if (!DB.years[Y]) Y = +Object.keys(DB.years).map(Number).sort((a, b) => a - b)[0];
+    let S = DB.years[Y];
+    /* cartões de crédito: linhas de Saídas marcadas em S.cards; lançamento sem "card" é do cartão principal, id "itau" (legado) */
+    const isCardRow = id => (S.cards || []).includes(id);
+    const cardTx = (t, id) => (t.card || 'itau') === id;
+    const hasTx = (m, id = 'itau') => S.tx.some(t => t.m === m && cardTx(t, id));
+    const txOf = (m, id = 'itau') => S.tx.filter(t => t.m === m && cardTx(t, id));
+    const cardVal = (id, m) => hasTx(m, id) ? r2(txOf(m, id).reduce((a, t) => a + t.v, 0)) : ev(S.vals[id][m]);
+    /* "Outros" detalhado: gastos esporádicos que compõem a linha Outros do mês */
+    const outTx = m => (S.outx || []).filter(t => t.m === m);
+    const hasOut = m => !isDel('outs') && outTx(m).length > 0;
+    const outsVal = m => hasOut(m) ? r2(outTx(m).reduce((a, t) => a + t.v, 0)) : ev(S.vals.outs[m]);
+    /* "Outros" das entradas detalhado: só Tipo e Valor (sem categoria) */
+    const outeTx = m => (S.outex || []).filter(t => t.m === m);
+    const hasOute = m => !isDel('oute') && outeTx(m).length > 0;
+    const outeVal = m => hasOute(m) ? r2(outeTx(m).reduce((a, t) => a + t.v, 0)) : ev(S.vals.oute[m]);
+    const refM = y => y < curY ? 12 : y > curY ? 0 : now.getMonth();
+    const paidDef = m => m < refM(Y);
+    const curMonth = () => Y < curY ? 11 : Y > curY ? 0 : now.getMonth();
+    let curM = curMonth();
+    const lastTx = () => S.tx.length ? Math.max(...S.tx.map(t => t.m)) : curM;
+    function migrate() {
+      S.mods = S.mods || {}; if (!Array.isArray(S.cards)) S.cards = ['itau', 'nub']; mergeCats(); applyCustom();
+      S.outx = S.outx || []; S.outex = S.outex || []; S.pend = S.pend || []; S.notas = S.notas || []; S.rowcat = Object.assign({}, ROWCAT, S.rowcat || {}); S.paid = S.paid || {}; S.cm = S.cm || {};
+      Object.keys(DEF).forEach(id => { if (DEF[id].k === 'in' && !Array.isArray(S.vals[id])) S.vals[id] = Array(12).fill(null) });
+      [...BASE_IDS.sai, ...S.custom.filter(c => c.k === 'sai').map(c => c.id)].forEach(id => { if (!Array.isArray(S.paid[id])) S.paid[id] = Array.from({ length: 12 }, (_, m) => paidDef(m)) })
+
+    }
+    let ui = { tab: 'resumo', focus: innerWidth < 760 ? curM : 'all', cardOpen: false, cardId: 'itau', cm: lastTx(), q: '', add: false, addln: null, open: {}, outsOpen: false, om: curM, outeOpen: false, oem: curM };
+    let imp = { rows: [], bad: [] };
+</script>

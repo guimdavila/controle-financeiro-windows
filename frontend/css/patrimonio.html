@@ -1,0 +1,122 @@
+<style>
+    /* investimentos */
+    :root {
+      --inv: #8E9BF5
+    }
+
+    @media (prefers-color-scheme:dark) {
+      :root {
+        --inv: #8E9BF5
+      }
+    }
+
+    .blk.inv h2 {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .blk.inv h2::before {
+      content: "";
+      width: 6px;
+      height: 22px;
+      border-radius: 3px;
+      background: var(--inv)
+    }
+
+    .blk.inv .wrap {
+      border-top: 4px solid var(--inv)
+    }
+
+    .blk.inv .grid thead th {
+      background: color-mix(in srgb, var(--inv) 17%, var(--surface));
+      color: var(--ink)
+    }
+
+    .blk.inv .grid tr.tot td,
+    .blk.inv .grid tr.tot .lbl {
+      background: color-mix(in srgb, var(--inv) 14%, var(--surface))
+    }
+
+    .blk.inv .grid td.agg {
+      background: color-mix(in srgb, var(--inv) 7%, var(--surface))
+    }
+
+    .blk.inv .grid tr.tot td.agg {
+      background: color-mix(in srgb, var(--inv) 14%, var(--surface))
+    }
+
+    @media (max-width:860px) {
+      .cmp {
+        left: 8px;
+        right: 8px;
+        top: auto;
+        bottom: 8px;
+        width: auto;
+        max-width: none
+      }
+    }
+
+    @media (max-width:860px) {
+
+      .lnf,
+      .lnf.ent {
+        grid-template-columns: 1fr 1fr
+      }
+
+      .cols {
+        grid-template-columns: 1fr
+      }
+
+      .addrow {
+        grid-template-columns: 1fr 1fr
+      }
+
+      details.cat summary {
+        grid-template-columns: 12px 1fr 90px
+      }
+
+      details.cat summary .cc,
+      details.cat summary .mini,
+      details.cat summary .cp {
+        display: none
+      }
+
+      .tx {
+        grid-template-columns: 44px 1fr 92px 28px
+      }
+
+      .tx select {
+        grid-column: 2 / 4;
+        grid-row: 2
+      }
+
+      .prev .tx {
+        grid-template-columns: 44px 1fr 80px 28px
+      }
+
+      .prev .tx select {
+        grid-column: 1 / 4
+      }
+
+      .lblwrap .tagb {
+        display: none
+      }
+
+      .li {
+        grid-template-columns: 28px 1fr 100px 30px
+      }
+
+      .grid .lbl {
+        min-width: 150px;
+        max-width: 170px
+      }
+    }
+
+    @media (prefers-reduced-motion:reduce) {
+      * {
+        transition: none !important
+      }
+    }
+
+</style>

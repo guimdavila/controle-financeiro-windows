@@ -1,0 +1,51 @@
+<script>
+    let snap = {}, timer = null, retry = null, q = Promise.resolve(), ver = 0, dirty = false, lastLoad = 0;
+    const setSt = t => { $('#saved').textContent = t };
+    const stamp = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    function save() {
+      DB.years[Y] = S; DB.cur = Y; ver++; dirty = true; setSt('Salvando…');
+      clearTimeout(timer); clearTimeout(retry);
+      timer = setTimeout(() => { q = q.then(doSync) }, 700)
+    }
+    async function doSync() {
+      const v = ver, cur = snapOf(), chg = diffSnap(snap, cur);
+      if (noChange(chg)) { if (v === ver) { dirty = false; setSt(TXT.salvo + stamp()) } return }
+      try { await rpc('applyChanges', chg); snap = cur; if (v === ver) { dirty = false; setSt(TXT.salvo + stamp()) } }
+      catch (e) {
+        setSt('Erro ao salvar: ' + errTxt(e) + ' – tentando de novo…'); toast(TXT.erroSalvar);
+        clearTimeout(retry); retry = setTimeout(() => { q = q.then(doSync) }, 15000)
+      }
+    }
+    window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = '' } });
+
+    async function loadServer(first) {
+      const d = await rpc('getData');
+      applyCats(d.categorias); NORM = d.normalizacoes || [];
+      const years = hydrate(d), ys = Object.keys(years).map(Number).sort((a, b) => a - b);
+      const keep = Y;
+      if (!ys.length) {
+        DB = freshDB(); Y = ANO0; S = DB.years[Y]; snap = {};
+        if (TXT.vazio) toast(TXT.vazio)
+      } else {
+        DB = { v: 2, cur: 0, years };
+        Y = !first && years[keep] ? keep : (years[curY] ? curY : ys[ys.length - 1]); DB.cur = Y; S = DB.years[Y];
+        snap = snapOf()
+      }
+      lastLoad = Date.now()
+    }
+    async function boot() {
+      setSt(TXT.carregando);
+      try { await loadServer(true) } catch (e) { setSt(TXT.erroLer + errTxt(e)); toast(TXT.naoLeu); return }
+      migrate(); curM = curMonth(); ui.focus = innerWidth < 760 ? curM : 'all'; ui.cm = lastTx(); ui.cardOpen = false;
+      render(); save()
+    }
+    async function refresh(manual) {
+      if (manual) toast('Atualizando…');
+      clearTimeout(timer); await (q = q.then(doSync));
+      if (dirty) { toast('Há alterações sem salvar. Tente de novo em instantes.'); return }
+      try { await loadServer(false) } catch (e) { toast('Erro ao atualizar: ' + errTxt(e)); return }
+      migrate(); curM = curMonth(); ui.cm = lastTx(); ui.cardOpen = false; ui.tc = null; render(); setSt('Atualizado às ' + stamp());
+      if (manual) toast('Dados atualizados')
+    }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && !dirty && lastLoad && Date.now() - lastLoad > 120000) refresh(false) });
+</script>

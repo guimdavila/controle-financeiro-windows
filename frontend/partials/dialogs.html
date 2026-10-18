@@ -1,0 +1,120 @@
+  <dialog id="imp" aria-labelledby="impTitle">
+    <div class="dlg">
+      <header>
+        <h3 id="impTitle">Importar fatura do cartão</h3>
+        <p>Escolha o PDF da fatura (de qualquer banco) ou um arquivo TXT, ou cole o texto. O sistema acha os lançamentos,
+          troca o nome da maquininha pelo nome das suas <b>regras de normalização</b> e sugere a categoria pelo que já
+          existe nas suas faturas.</p>
+      </header>
+      <div class="body">
+        <div class="row">
+          <div><label for="impFile">Fatura em PDF, TXT ou CSV</label><input type="file" id="impFile"
+              accept=".pdf,.txt,.csv,.tsv,application/pdf,text/plain">
+          </div>
+          <div><label for="impCard">Cartão</label><select id="impCard"></select></div>
+          <div><label for="impMonth">Fatura de</label><select id="impMonth"></select></div>
+          <div><label for="impMode">Se já houver lançamentos</label>
+            <select id="impMode">
+              <option value="replace">Substituir os lançamentos do mês</option>
+              <option value="append">Adicionar aos existentes</option>
+            </select>
+          </div>
+        </div>
+        <label for="impText" id="impTextLbl">Ou cole o texto aqui</label>
+        <textarea id="impText" spellcheck="false"
+          placeholder="Supermercado do bairro (05/05) | R$ 121,57 | Supermercado"></textarea>
+        <div id="impSum" style="margin:12px 0 6px;font-weight:600"></div>
+        <div class="prev" id="impPrev" hidden></div>
+        <details id="impBadBox" hidden style="margin-top:8px;font-size:13px;color:var(--muted)">
+          <summary>Linhas não reconhecidas</summary>
+          <pre id="impBad" style="white-space:pre-wrap;margin:6px 0 0"></pre>
+        </details>
+        <details id="impRawBox" hidden style="margin-top:8px;font-size:13px;color:var(--muted)">
+          <summary>Texto extraído do PDF (para conferência)</summary>
+          <pre id="impRaw" style="white-space:pre-wrap;margin:6px 0 0;max-height:260px;overflow:auto"></pre>
+        </details>
+      </div>
+      <footer>
+        <span class="s" id="impHint"></span>
+        <button class="btn" data-act="norm">Normalizações</button>
+        <button class="btn" data-act="impCancel">Cancelar</button>
+        <button class="btn primary" id="impOk" data-act="impOk" disabled>Importar</button>
+      </footer>
+    </div>
+  </dialog>
+  <dialog id="yr" aria-labelledby="yrTitle">
+    <div class="dlg">
+      <header>
+        <h3 id="yrTitle">Novo ano</h3>
+        <p>Cria o ano em branco. As linhas (nomes, linhas novas, excluídas e categorias) são copiadas
+          do ano que está aberto e as metas de compra ainda em aberto vêm junto.</p>
+      </header>
+      <div class="body"><label for="yrIn">Ano</label><input type="number" id="yrIn" min="2000" max="2100" step="1"
+          style="border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 8px;width:120px">
+      </div>
+      <footer>
+        <span class="s" id="yrHint"></span><button class="btn" data-act="yrCancel">Cancelar</button><button
+          class="btn primary" data-act="yrOk">Criar ano</button>
+      </footer>
+    </div>
+  </dialog>
+  <dialog id="cat" aria-labelledby="catT">
+    <div class="dlg cat">
+      <header>
+        <div>
+          <h3 id="catT">Categorização</h3>
+          <p>Defina as categorias e em qual delas cada gasto fixo entra no Resumo.</p>
+        </div>
+        <button class="btn" data-act="catClose" aria-label="Fechar"><svg class="i" aria-hidden="true"><use href="#i-x" /></svg></button>
+      </header>
+      <div class="body" id="catBody"></div>
+      <footer><button class="btn primary" data-act="catClose">Concluir</button></footer>
+    </div>
+  </dialog>
+
+  <dialog id="norm" aria-labelledby="normT">
+    <div class="dlg cat">
+      <header>
+        <div>
+          <h3 id="normT">Normalização de nomes</h3>
+          <p>Troque o nome que vem na fatura (o da maquininha) pelo nome que você reconhece. Vale para toda importação,
+            de qualquer banco e de qualquer ano.</p>
+        </div>
+        <button class="btn" data-act="normClose" aria-label="Fechar"><svg class="i" aria-hidden="true"><use href="#i-x" /></svg></button>
+      </header>
+      <div class="body" id="normBody"></div>
+      <footer><span class="s" id="normSt">Prioridade: “Igual a”, depois “Começa com”, depois “Contém”; o texto mais longo vence.</span><button class="btn primary" data-act="normClose">Concluir</button></footer>
+    </div>
+  </dialog>
+
+  <dialog id="mods" aria-labelledby="modsT">
+    <div class="dlg">
+      <header>
+        <h3 id="modsT">Editar módulos</h3>
+        <p>Ocultar um módulo não apaga os dados: os valores continuam salvos e entram nos totais. Marque “Visível” para
+          trazê-lo de volta.</p>
+      </header>
+      <div class="body" id="modsList"></div>
+      <footer><button class="btn primary" data-act="modsClose">Fechar</button></footer>
+    </div>
+  </dialog>
+  <dialog id="pans" aria-labelledby="pansT">
+    <div class="dlg">
+      <header>
+        <div>
+          <h3 id="pansT">Editar painéis</h3>
+          <p>Escolha o que aparece no Resumo. Ocultar não apaga nenhum dado.</p>
+        </div>
+        <button class="btn sm" data-act="pansClose" aria-label="Fechar">×</button>
+      </header>
+      <div class="body" id="pansList"></div>
+      <footer><span class="s" id="pansSt"></span><button class="btn primary" data-act="pansClose">Concluir</button></footer>
+    </div>
+  </dialog>
+  <aside class="cmp" id="cmp" hidden aria-label="Comentário da célula">
+    <header><b id="cmTitle"></b><button class="btn sm" data-act="cmclose" aria-label="Fechar">×</button></header>
+    <textarea id="cmText" placeholder="Escreva um comentário…"></textarea>
+    <footer><span>Salvo automaticamente</span><button class="btn sm danger" data-act="cmdel">Excluir</button></footer>
+  </aside>
+  <div class="tip" id="tip" hidden></div>
+  <div class="toast" id="toast" role="status" popover="manual"></div>

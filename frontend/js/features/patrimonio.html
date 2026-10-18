@@ -1,0 +1,35 @@
+<script>
+    const penSvg = `<svg width="13" height="13" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 10l.5-2.5L8.5 1.5l2 2-6 6L2 10z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+    const penBar = () => `<div class="modbar"><button class="btn sm" data-act="mods" aria-label="Editar módulos" title="Editar módulos">${penSvg}</button></div>`;
+    const rPat = () => {
+      const on = MODK.filter(k => !(S.mods[k] && S.mods[k].hidden));
+      $('#view-pat').innerHTML = (on.length ? on.map(k => tableHTML(k)).join('') : '<div class="empty">Todos os módulos estão ocultos. Use o lápis para mostrar de novo.</div>') + `<p class="hint" style="color:var(--muted);font-size:13px">“Atual” mostra o último mês preenchido. O saldo de Bitcoin entra automaticamente na linha de reservas.</p>`
+    };
+    const cssInv = () => getComputedStyle(document.documentElement).getPropertyValue('--inv').trim() || '#4F5FD0';
+    function modsHTML() {
+      return MODK.map(k => {
+        const m = S.mods[k] || {};
+        return `<div class="mrow"><label class="mchk"><input type="checkbox" data-mv="${k}"${m.hidden ? '' : ' checked'}>Visível</label><input type="text" data-mn="${k}" value="${esc(T[k].title)}" maxlength="60" aria-label="Nome do módulo"><input type="color" data-mc="${k}" value="${esc(m.color || cssInv())}" aria-label="Cor do cabeçalho"><button class="btn sm" data-act="modclear" data-k="${k}">Limpar dados</button><button class="btn sm" data-act="modxlsx" data-k="${k}">Exportar .xlsx</button></div>`
+      }).join('')
+    }
+    const modOf = k => (S.mods[k] = S.mods[k] || {});
+    function clearMod(k) {
+      if (!confirm('Limpar todos os valores de “' + T[k].title + '” em ' + Y + '? Não dá para desfazer.')) return;
+      ORIGR[k].filter(r => r.k === 'in').forEach(r => { S.vals[r.id] = Array(12).fill(null); Object.keys(S.cm).forEach(x => { if (x.startsWith(r.id + '|')) delete S.cm[x] }) });
+      save(); render(); toast('Dados de “' + T[k].title + '” limpos')
+    }
+    function exportMod(k) {
+      if (typeof XLSX === 'undefined') { toast('A biblioteca de exportação não carregou'); return }
+      const f = (d, v) => v == null ? '' : d.pct ? r2(v * 100) : v;
+      const aoa = [['Tipo', ...MES, 'Atual'], ...T[k].rows.map(d => [d.l, ...[...Array(12).keys()].map(m => f(d, val(d.id, m))), f(d, aggVal(d.id, 'L'))])];
+      const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!cols'] = [{ wch: 32 }, ...Array(13).fill({ wch: 13 })];
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, T[k].title.replace(/[\\\/?*\[\]:]/g, ' ').slice(0, 31));
+      XLSX.writeFile(wb, T[k].title + ' ' + Y + '.xlsx')
+    }
+    document.addEventListener('change', e => {
+      const i = e.target;
+      if (i.dataset.mv) { modOf(i.dataset.mv).hidden = !i.checked; applyCustom(); save(); render() }
+      else if (i.dataset.mn) { const k = i.dataset.mn, v = i.value.trim(); modOf(k).name = (!v || v === ORIGT[k]) ? '' : v; if (!v) i.value = ORIGT[k]; applyCustom(); save(); render() }
+      else if (i.dataset.mc) { modOf(i.dataset.mc).color = i.value; save(); render() }
+    });
+</script>

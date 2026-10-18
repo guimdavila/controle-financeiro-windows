@@ -1,0 +1,44 @@
+<script>
+    /* ---------- painel do "Outros" ---------- */
+    const outCatSel = (cur, attr) => { const l = ALLCATS.includes(cur) ? ALLCATS : [...ALLCATS, cur]; return `<select ${attr} aria-label="Categoria">${l.map(c => `<option${c === cur ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select>` };
+    function outPanelHTML() {
+      const m = ui.om, list = outTx(m), total = r2(list.reduce((a, t) => a + t.v, 0)), manual = ev(S.vals.outs[m]);
+      let h = `<div class="panel"><div class="ph"><div><h3>Outros de ${MES[m]}</h3><div class="sub">${list.length ? list.length + ' gastos em ' + new Set(list.map(t => t.c)).size + ' categorias' : 'nenhum gasto detalhado'}</div></div><div class="tot ${total < 0 ? 'neg' : ''}">${fmtR(list.length ? total : manual)}</div></div>`;
+      h += `<div class="pm" role="group" aria-label="Mês do Outros">`;
+      for (let k = 0; k < 12; k++) { const v = outsVal(k); h += `<button data-act="om" data-m="${k}" aria-pressed="${k === m}"><b>${AB[k]}</b><i>${v == null ? '–' : nf0.format(v)}</i></button>` }
+      h += `</div>`;
+      if (!list.length && manual != null) h += `<p class="outhint">O valor de ${MES[m]} (<b>${fmtR(manual)}</b>) foi digitado direto na célula. Ao adicionar o primeiro gasto, o total passa a ser a soma dos gastos (se apagar todos, volta ao valor digitado). <button class="btn sm" data-act="outconv">Transformar em 1º gasto</button></p>`;
+      if (list.length) { const g = groupCats(list); h += `<div class="seg" aria-hidden="true">${g.map(([c, a]) => `<i style="flex:${Math.max(a.sum, 0)};background:${CCOL[c] || CCOL.Outros}" title="${esc(c)}: ${fmtR(a.sum)}"></i>`).join('')}</div>` }
+      h += `<div class="addout"><input id="on" placeholder="Tipo (ex.: Presente, Conserto)" maxlength="80" aria-label="Tipo do gasto" autocomplete="off"><input id="ov" placeholder="Valor" inputmode="decimal" aria-label="Valor" autocomplete="off">${outCatSel('Outros', 'id="oc"')}<button class="btn primary" data-act="addout">Adicionar</button></div>`;
+      h += list.length ? `<div class="txs" style="background:var(--surface);border:1px solid var(--line);border-radius:8px">${list.map(t => `<div class="tx ox"><input class="n" data-on="${t.id}" value="${esc(t.n)}" title="${esc(t.n)}" maxlength="80" aria-label="Tipo do gasto">${outCatSel(t.c, `data-oc="${t.id}"`)}<input class="v" data-ov="${t.id}" value="${nf.format(t.v)}" inputmode="decimal" aria-label="Valor de ${esc(t.n)}"><button class="x" data-act="delout" data-id="${t.id}" aria-label="Excluir ${esc(t.n)}" title="Excluir">×</button></div>`).join('')}</div>` : `<div class="empty">Nenhum gasto detalhado em ${MES[m]}.</div>`;
+      return h + `</div>`
+    }
+    const newOutId = () => 'ox' + Date.now().toString(36) + Math.random().toString(36).slice(2, 4);
+    function addOut() {
+      const n = ($('#on')?.value || '').trim(), v = parseBR($('#ov')?.value || '');
+      if (!n || v == null) { toast('Informe o tipo e o valor'); return }
+      S.outx.push({ id: newOutId(), m: ui.om, n, c: $('#oc').value, v: r2(v) });
+      save(); render(); $('#on')?.focus(); toast('Gasto incluído em Outros')
+    }
+
+    /* ---------- painel do "Outros" das entradas (só Tipo e Valor) ---------- */
+    function outePanelHTML() {
+      const m = ui.oem, list = outeTx(m), total = r2(list.reduce((a, t) => a + t.v, 0)), manual = ev(S.vals.oute[m]);
+      let h = `<div class="panel" style="border-left-color:var(--in)"><div class="ph"><div><h3>Outras entradas de ${MES[m]}</h3><div class="sub">${list.length ? list.length + ' entradas' : 'nenhuma entrada detalhada'}</div></div><div class="tot ${total < 0 ? 'neg' : ''}">${fmtR(list.length ? total : manual)}</div></div>`;
+      h += `<div class="pm" role="group" aria-label="Mês do Outros (entradas)">`;
+      for (let k = 0; k < 12; k++) { const v = outeVal(k); h += `<button data-act="oem" data-m="${k}" aria-pressed="${k === m}"><b>${AB[k]}</b><i>${v == null ? '–' : nf0.format(v)}</i></button>` }
+      h += `</div>`;
+      if (!list.length && manual != null) h += `<p class="outhint">O valor de ${MES[m]} (<b>${fmtR(manual)}</b>) foi digitado direto na célula. Ao adicionar a primeira entrada, o total passa a ser a soma das entradas (se apagar todas, volta ao valor digitado). <button class="btn sm" data-act="outeconv">Transformar em 1ª entrada</button></p>`;
+      h += `<div class="addout e"><input id="en" placeholder="Tipo (ex.: Venda, Reembolso)" maxlength="80" aria-label="Tipo da entrada" autocomplete="off"><input id="ev" placeholder="Valor" inputmode="decimal" aria-label="Valor" autocomplete="off"><button class="btn primary" data-act="addoute">Adicionar</button></div>`;
+      h += list.length ? `<div class="txs" style="background:var(--surface);border:1px solid var(--line);border-radius:8px">${list.map(t => `<div class="tx oe"><input class="n" data-en="${t.id}" value="${esc(t.n)}" title="${esc(t.n)}" maxlength="80" aria-label="Tipo da entrada"><input class="v" data-ev="${t.id}" value="${nf.format(t.v)}" inputmode="decimal" aria-label="Valor de ${esc(t.n)}"><button class="x" data-act="deloute" data-id="${t.id}" aria-label="Excluir ${esc(t.n)}" title="Excluir">×</button></div>`).join('')}</div>` : `<div class="empty">Nenhuma entrada detalhada em ${MES[m]}.</div>`;
+      return h + `</div>`
+    }
+    const newOuteId = () => 'oe' + Date.now().toString(36) + Math.random().toString(36).slice(2, 4);
+    function addOute() {
+      const n = ($('#en')?.value || '').trim(), v = parseBR($('#ev')?.value || '');
+      if (!n || v == null) { toast('Informe o tipo e o valor'); return }
+      S.outex.push({ id: newOuteId(), m: ui.oem, n, v: r2(v) });
+      save(); render(); $('#en')?.focus(); toast('Entrada incluída em Outros')
+    }
+
+</script>

@@ -1,0 +1,5 @@
+<script>
+    let cmKey = null;
+    function showComment(id, m, edit) { cmKey = id + '|' + m; $('#cmTitle').textContent = DEF[id].l + ' · ' + MES[m]; $('#cmText').value = S.cm[cmKey] || ''; $('#cmp').hidden = false; if (edit) $('#cmText').focus() }
+    function hideComment() { cmKey = null; $('#cmp').hidden = true }
+</script>

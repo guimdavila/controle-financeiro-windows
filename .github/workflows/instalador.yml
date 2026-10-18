@@ -1,0 +1,31 @@
+# Gera o instalador do Windows (.exe).
+# Roda à mão (Actions > Instalador > Run workflow) ou ao criar uma tag v*.
+# O arquivo fica em "Artifacts" na página da execução.
+name: Instalador
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  instalador:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: node node_modules/electron/install.js
+      - run: npm test
+      - run: npm run desktop:dist:win
+        env:
+          # sem certificado: o instalador sai sem assinatura (o sistema avisa ao abrir)
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: instalador-windows
+          path: dist/*.exe
+          if-no-files-found: error

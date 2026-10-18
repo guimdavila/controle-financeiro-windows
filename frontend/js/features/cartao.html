@@ -1,0 +1,43 @@
+<script>
+    /* ---------- painel do cartão ---------- */
+    const dkey = t => { const m = String(t.d).match(/^(\d\d)\/(\d\d)$/); if (!m) return 0; let mo = +m[2]; if (mo > t.m + 2) mo -= 12; return mo * 100 + +m[1] };
+    const catSel = (cur, attr) => `<select ${attr} aria-label="Categoria">${(cur && !CATS.includes(cur) ? [...CATS, cur] : CATS).map(c => `<option${c === cur ? ' selected' : ''}>${c}</option>`).join('')}</select>`;
+    function panelHTML(id = ui.cardId) {
+      const m = ui.cm, list = txOf(m, id), total = r2(list.reduce((a, t) => a + t.v, 0));
+      const cats = new Set(list.map(t => t.c));
+      let h = `<div class="panel"><div class="ph"><div><h3>Fatura ${esc(DEF[id] ? DEF[id].l : 'do cartão')} · ${MES[m]}</h3><div class="sub">${list.length} lançamentos em ${cats.size} categorias</div></div>
+  <div class="tot ${total < 0 ? 'neg' : ''}">${fmtR(total)}</div>
+  <div class="acts"><button class="btn sm primary" data-act="import">Importar fatura</button><button class="btn sm" data-act="addtx">+ Lançamento</button><button class="btn sm" data-act="norm" title="Regras que trocam o nome da fatura pelo nome final">Normalizações</button></div></div>`;
+      h += `<div class="pm" role="group" aria-label="Fatura do mês">`;
+      for (let k = 0; k < 12; k++) {
+        const v = hasTx(k, id) ? r2(txOf(k, id).reduce((a, t) => a + t.v, 0)) : null;
+        h += `<button data-act="cm" data-m="${k}" aria-pressed="${k === m}"><b>${AB[k]}</b><i>${v == null ? 'sem lançamentos' : nf0.format(v)}</i></button>`
+      }
+      h += `</div>`;
+      if (list.length) {
+        const g = groupCats(list);
+        h += `<div class="seg" aria-hidden="true">${g.map(([c, a]) => `<i style="flex:${Math.max(a.sum, 0)};background:${CCOL[c] || CCOL.Outros}" title="${esc(c)}: ${fmtR(a.sum)}"></i>`).join('')}</div>`
+      }
+      if (ui.add) h += `<div class="addrow"><input id="nd" placeholder="DD/MM" maxlength="5" aria-label="Data"><input id="nn" placeholder="Estabelecimento" aria-label="Estabelecimento"><input id="nv" placeholder="Valor" inputmode="decimal" aria-label="Valor">${catSel('Outros', 'id="nc"')}<button class="btn primary" data-act="addok">Adicionar</button></div>`;
+      h += `<div class="tools"><input type="search" id="q" placeholder="Buscar estabelecimento…" value="${esc(ui.q)}" aria-label="Buscar nos lançamentos"><button class="btn sm" data-act="expand">Expandir tudo</button><button class="btn sm" data-act="collapse">Recolher tudo</button></div>`;
+      h += `<div id="catlist">${catListHTML()}</div></div>`; return h
+    }
+    function groupCats(list) {
+      const g = {}; list.forEach(t => { (g[t.c] = g[t.c] || { sum: 0, items: [] }); g[t.c].sum = r2(g[t.c].sum + t.v); g[t.c].items.push(t) });
+      return Object.entries(g).sort((a, b) => b[1].sum - a[1].sum)
+    }
+    function catListHTML() {
+      const m = ui.cm, q = norm(ui.q); let list = txOf(m, ui.cardId);
+      if (!list.length) return `<div class="empty">Nenhum lançamento em ${MES[m]} ainda. Use <b>Importar fatura</b> para trazer o PDF da fatura ou <b>+ Lançamento</b> para incluir um a um.</div>`;
+      if (q) list = list.filter(t => norm(t.n).includes(q));
+      if (!list.length) return `<div class="empty">Nada encontrado para “${esc(ui.q)}”.</div>`;
+      const g = groupCats(list), tot = g.reduce((a, [, x]) => a + Math.max(x.sum, 0), 0) || 1;
+      return g.map(([c, x]) => {
+        const k = ui.cardId + '|' + m + '|' + c, pct = Math.round(Math.max(x.sum, 0) / tot * 100), col = CCOL[c] || CCOL.Outros;
+        const items = x.items.slice().sort((a, b) => dkey(a) - dkey(b));
+        return `<details class="cat" data-k="${esc(k)}"${ui.open[k] || q ? ' open' : ''}><summary><span class="dot" style="background:${col}"></span><span class="cn">${esc(c)}</span><span class="cc">${x.items.length} lanç.</span><span class="mini"><i style="width:${pct}%;background:${col}"></i></span><span class="cv">${fmtN(x.sum)}</span><span class="cp">${pct}%</span></summary>
+    <div class="txs">${items.map(t => `<div class="tx"><span class="d">${esc(t.d) || '–'}</span><input class="n" data-tn="${t.id}" value="${esc(t.n)}" title="${esc(t.n)}" maxlength="80" aria-label="Nome do lançamento">${catSel(t.c, `data-tc="${t.id}"`)}<input class="v" data-tv="${t.id}" value="${nf.format(t.v)}" inputmode="decimal" aria-label="Valor de ${esc(t.n)}"><button class="x" data-act="deltx" data-id="${t.id}" aria-label="Excluir ${esc(t.n)}" title="Excluir">×</button></div>`).join('')}</div></details>`
+      }).join('')
+    }
+
+</script>

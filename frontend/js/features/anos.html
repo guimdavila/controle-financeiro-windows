@@ -1,0 +1,34 @@
+<script>
+    /* ---------- render geral ---------- */
+    function renderYears() {
+      const ys = Object.keys(DB.years).map(Number).sort((a, b) => a - b);
+      $('#yearLbl').textContent = Y;
+      $('#years').innerHTML = ys.map(y => `<button data-act="year" data-y="${y}" aria-pressed="${y === Y}">${y}</button>`).join('') + `<hr><button data-act="newyear"><svg class="i" aria-hidden="true"><use href="#i-plus"/></svg>Novo ano…</button>` + (ys.length > 1 ? `<button class="danger" data-act="delyear" title="Excluir o ano ${Y} e tudo que foi lançado nele"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg>Excluir ${Y}…</button>` : '')
+    }
+    function setYear(y) {
+      DB.years[Y] = S; Y = y; DB.cur = y; S = DB.years[y]; migrate(); curM = curMonth();
+      ui.cm = lastTx(); ui.cardOpen = false; ui.add = false; ui.addln = null; ui.tc = null; ui.open = {}; ui.q = ''; hideComment(); save(); render()
+    }
+    function blankYear(src) {
+      const c = o => JSON.parse(JSON.stringify(o)), u = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+      return {
+        catsX: c(src.catsX || []), mods: c(src.mods || {}), catOv: c(src.catOv || {}),
+        vals: {}, tx: [], outx: [], outex: [], custom: c(src.custom || []), del: c(src.del || []), lbl: c(src.lbl || {}), ord: c(src.ord || {}), rowcat: c(src.rowcat || {}), paid: {}, cm: {},
+        pend: (src.pend || []).filter(p => !p.ok).map(p => Object.assign(c(p), { id: 'p' + u() })), notas: []
+      }
+    }
+    function openNewYear() { const ys = Object.keys(DB.years).map(Number); $('#yrIn').value = Math.max(...ys) + 1; $('#yrHint').textContent = ''; $('#yr').showModal(); $('#yrIn').select() }
+    function newYearOk() {
+      const y = parseInt($('#yrIn').value, 10);
+      if (!(y >= 2000 && y <= 2100)) { $('#yrHint').textContent = 'Informe um ano entre 2000 e 2100.'; return }
+      $('#yr').close();
+      if (DB.years[y]) { setYear(y); toast('O ano ' + y + ' já existia – abri ele'); return }
+      const from = Y; DB.years[y] = blankYear(S); setYear(y); toast('Ano ' + y + ' criado, com as linhas de ' + from)
+    }
+    function delYear() {
+      const ys = Object.keys(DB.years).map(Number).sort((a, b) => a - b); if (ys.length < 2) return;
+      if (!confirm('Excluir o ano ' + Y + ' e TUDO que foi lançado nele? Não dá para desfazer (baixe um backup antes se tiver dúvida).')) return;
+      const d = Y, to = ys.filter(x => x !== d).reduce((a, b) => Math.abs(b - d) < Math.abs(a - d) ? b : a);
+      setYear(to); delete DB.years[d]; save(); render(); toast('Ano ' + d + ' excluído')
+    }
+</script>

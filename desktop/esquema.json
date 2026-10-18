@@ -1,0 +1,379 @@
+{
+ "tabelas": {
+  "Anos": {
+   "cols": [
+    "ano"
+   ],
+   "key": [
+    "ano"
+   ]
+  },
+  "Categorias": {
+   "cols": [
+    "id_categoria",
+    "nome",
+    "cor",
+    "grupo",
+    "ativo"
+   ],
+   "key": [
+    "id_categoria"
+   ]
+  },
+  "Linhas": {
+   "cols": [
+    "id_linha",
+    "tipo",
+    "nome_padrao"
+   ],
+   "key": [
+    "id_linha"
+   ]
+  },
+  "LinhasAno": {
+   "cols": [
+    "ano",
+    "id_linha",
+    "tipo",
+    "nome",
+    "id_categoria",
+    "personalizada",
+    "excluida"
+   ],
+   "key": [
+    "ano",
+    "id_linha"
+   ],
+   "cat": true
+  },
+  "Valores": {
+   "cols": [
+    "ano",
+    "id_linha",
+    "mes",
+    "valor",
+    "formula",
+    "pago",
+    "comentario"
+   ],
+   "key": [
+    "ano",
+    "id_linha",
+    "mes"
+   ]
+  },
+  "LancamentosCartao": {
+   "cols": [
+    "ano",
+    "id_lancamento",
+    "mes",
+    "descricao",
+    "data",
+    "id_categoria",
+    "valor",
+    "id_linha"
+   ],
+   "key": [
+    "ano",
+    "id_lancamento"
+   ],
+   "cat": true
+  },
+  "Pendencias": {
+   "cols": [
+    "ano",
+    "id_pendencia",
+    "descricao",
+    "valor",
+    "observacao",
+    "pago"
+   ],
+   "key": [
+    "ano",
+    "id_pendencia"
+   ]
+  },
+  "Notas": {
+   "cols": [
+    "ano",
+    "id_nota",
+    "descricao",
+    "concluida"
+   ],
+   "key": [
+    "ano",
+    "id_nota"
+   ]
+  },
+  "Normalizacoes": {
+   "cols": [
+    "id_regra",
+    "tipo",
+    "padrao",
+    "nome",
+    "id_categoria"
+   ],
+   "key": [
+    "id_regra"
+   ],
+   "cat": true
+  }
+ },
+ "porAno": [
+  "LinhasAno",
+  "Valores",
+  "LancamentosCartao",
+  "Pendencias",
+  "Notas"
+ ],
+ "linhaMeta": [
+  "categoria",
+  "modulo",
+  "catov",
+  "cartao",
+  "ordem"
+ ],
+ "categorias": [
+  [
+   1,
+   "Supermercado",
+   "#2F8F6B",
+   "cartao",
+   true
+  ],
+  [
+   2,
+   "Ecommerce",
+   "#D9822B",
+   "cartao",
+   true
+  ],
+  [
+   3,
+   "Deliverys",
+   "#C8452F",
+   "cartao",
+   true
+  ],
+  [
+   4,
+   "Restaurante",
+   "#B5546B",
+   "cartao",
+   true
+  ],
+  [
+   5,
+   "Transporte",
+   "#3F6FB5",
+   "cartao",
+   true
+  ],
+  [
+   6,
+   "Farmácia",
+   "#1E9BB0",
+   "cartao",
+   true
+  ],
+  [
+   7,
+   "Atividade Física",
+   "#7A9A2A",
+   "cartao",
+   true
+  ],
+  [
+   8,
+   "Moradia",
+   "#8B6B4A",
+   "cartao",
+   true
+  ],
+  [
+   9,
+   "Educação",
+   "#7A5BB5",
+   "cartao",
+   true
+  ],
+  [
+   10,
+   "Entretenimento",
+   "#D1A31F",
+   "cartao",
+   true
+  ],
+  [
+   11,
+   "Assinatura de streaming",
+   "#A24FB0",
+   "cartao",
+   true
+  ],
+  [
+   12,
+   "Viagem",
+   "#2F9E8F",
+   "cartao",
+   true
+  ],
+  [
+   13,
+   "Outros",
+   "#7B8794",
+   "cartao",
+   true
+  ],
+  [
+   14,
+   "Impostos e taxas",
+   "#5B6B8C",
+   "linha",
+   true
+  ],
+  [
+   15,
+   "Saúde",
+   "#C2647E",
+   "linha",
+   true
+  ],
+  [
+   16,
+   "Serviços",
+   "#B8864B",
+   "linha",
+   true
+  ],
+  [
+   19,
+   "Cartão de crédito (sem detalhe)",
+   "#EC7000",
+   "sistema",
+   true
+  ]
+ ],
+ "normalizacoes": [
+  [
+   "contem",
+   "mercadolivre",
+   "Mercado Livre",
+   "Ecommerce"
+  ],
+  [
+   "contem",
+   "mercado livre",
+   "Mercado Livre",
+   "Ecommerce"
+  ],
+  [
+   "contem",
+   "aliexpress",
+   "AliExpress",
+   "Ecommerce"
+  ],
+  [
+   "contem",
+   "amazon",
+   "Amazon",
+   "Ecommerce"
+  ],
+  [
+   "contem",
+   "shopee",
+   "Shopee",
+   "Ecommerce"
+  ],
+  [
+   "contem",
+   "uber",
+   "Uber",
+   "Transporte"
+  ],
+  [
+   "contem",
+   "ifood",
+   "Ifood",
+   "Deliverys"
+  ],
+  [
+   "contem",
+   "gympass",
+   "Gympass",
+   "Atividade Física"
+  ],
+  [
+   "contem",
+   "wellhub",
+   "Gympass",
+   "Atividade Física"
+  ],
+  [
+   "prefixo",
+   "MP *COSTELANACAIX",
+   "Costela na Caixa",
+   "Deliverys"
+  ],
+  [
+   "prefixo",
+   "THAYS STOLARSKI",
+   "Costela na Caixa",
+   "Deliverys"
+  ],
+  [
+   "prefixo",
+   "CAPPTA *ISALLIA",
+   "Isallia Pizzaria",
+   "Deliverys"
+  ],
+  [
+   "prefixo",
+   "EvellinKatharine",
+   "Isallia Pizzaria",
+   "Deliverys"
+  ],
+  [
+   "prefixo",
+   "COOPER FILIAL",
+   "Supermercado Cooper",
+   "Supermercado"
+  ],
+  [
+   "prefixo",
+   "Comprão Koch",
+   "Komprão Koch Atacadista",
+   "Supermercado"
+  ],
+  [
+   "prefixo",
+   "LucianaRocha",
+   "Frutaria do Paulo",
+   "Supermercado"
+  ],
+  [
+   "prefixo",
+   "YEN STORE",
+   "Yen Store",
+   "Supermercado"
+  ],
+  [
+   "prefixo",
+   "ESTETICA AND-CT",
+   "Estética And-CT",
+   "Serviços"
+  ],
+  [
+   "prefixo",
+   "MASTEROVERALLBARBEAR",
+   "Master Overall Barbearia",
+   "Serviços"
+  ],
+  [
+   "prefixo",
+   "Master Overall Barber",
+   "Master Overall Barbearia",
+   "Serviços"
+  ]
+ ]
+}

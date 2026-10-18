@@ -1,0 +1,9 @@
+<script>
+    /* ===== dados: Google Planilhas (Apps Script) ===== */
+    const rpc = (fn, ...a) => new Promise((ok, ko) => google.script.run.withSuccessHandler(ok).withFailureHandler(ko)[fn](...a));
+    const errTxt = e => (e && e.message) || String(e);
+    const TAB = ['LinhasAno', 'Valores', 'LancamentosCartao', 'Pendencias', 'Notas'];
+    const KEYS = { LinhasAno: ['ano', 'id_linha'], Valores: ['ano', 'id_linha', 'mes'], LancamentosCartao: ['ano', 'id_lancamento'], Pendencias: ['ano', 'id_pendencia'], Notas: ['ano', 'id_nota'] };
+    const paidDefY = (y, m) => m < refM(y);
+    const rowType = (() => { const o = {}; Object.keys(ORIGR).forEach(k => ORIGR[k].forEach(r => o[r.id] = k)); return o })();
+</script>

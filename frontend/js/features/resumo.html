@@ -1,0 +1,135 @@
+<script>
+    /* ---------- resumo ---------- */
+    function barChart() {
+      const W = 720, H = 240, pl = 48, pb = 24, pt = 12, gw = (W - pl) / 12;
+      const d = [...Array(12)].map((_, m) => ({ e: val('totE', m) || 0, s: val('totS', m) || 0 }));
+      let mx = Math.max(1000, ...d.flatMap(x => [x.e, x.s])); const step = Math.pow(10, Math.floor(Math.log10(mx))); mx = Math.ceil(mx / step) * step;
+      const y = v => pt + (H - pt - pb) * (1 - v / mx); let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Entradas e saídas por mês">`;
+      [0, .5, 1].forEach(f => { const v = mx * f; s += `<line x1="${pl}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end">${nf0.format(v)}</text>` });
+      d.forEach((x, m) => {
+        const gx = pl + m * gw, bw = gw * .3, sel = ui.focus === m;
+        if (sel) s += `<rect x="${gx + 2}" y="${pt}" width="${gw - 4}" height="${H - pt - pb}" fill="var(--hl)" rx="4"/>`;
+        s += `<rect class="b-in" x="${gx + gw * .17}" y="${y(x.e)}" width="${bw}" height="${Math.max(0, y(0) - y(x.e))}" rx="2"></rect>`;
+        s += `<rect class="b-out" x="${gx + gw * .53}" y="${y(x.s)}" width="${bw}" height="${Math.max(0, y(0) - y(x.s))}" rx="2"></rect>`;
+        s += `<text x="${gx + gw / 2}" y="${H - 7}" text-anchor="middle">${AB[m]}</text>`;
+        s += `<rect x="${gx}" y="${pt}" width="${gw}" height="${H - pt - pb}" fill="#000" fill-opacity="0" data-tip="${MES[m]}|Entradas: ${fmtR(x.e)}|Saídas: ${fmtR(x.s)}|Saldo: ${fmtR(r2(x.e - x.s))}"/>`
+      });
+      return s + `</svg>`
+    }
+    function lineChart() {
+      const W = 720, H = 170, pl = 48, pb = 22, pt = 14, gw = (W - pl) / 12;
+      const pts = []; for (let m = 0; m < 12; m++) { const v = val('totR', m); if (v != null && v > 0) pts.push([m, v]) }
+      if (pts.length < 2) return `<div class="empty">Preencha as reservas em pelo menos dois meses para ver a evolução.</div>`;
+      const mx = Math.max(...pts.map(p => p[1])) * 1.1, mn = 0, y = v => pt + (H - pt - pb) * (1 - (v - mn) / (mx - mn)), x = m => pl + m * gw + gw / 2;
+      let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolução das reservas">`;
+      [0, .5, 1].forEach(f => { const v = mx * f; s += `<line x1="${pl}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end">${nf0.format(v)}</text>` });
+      s += `<polyline fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" points="${pts.map(p => x(p[0]) + ',' + y(p[1])).join(' ')}"/>`;
+      pts.forEach(p => s += `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="5" fill="var(--accent)" data-tip="${MES[p[0]]}|Reservas: ${fmtR(p[1])}"></circle>`);
+      for (let m = 0; m < 12; m++)s += `<text x="${x(m)}" y="${H - 6}" text-anchor="middle">${AB[m]}</text>`;
+      return s + `</svg>`
+    }
+    function catTotals(ms) {
+      const g = {}; const add = (c, v, card) => { if (v == null || v === 0) return; const o = g[c] = g[c] || { sum: 0, card: 0 }; o.sum = r2(o.sum + v); if (card) o.card = r2(o.card + v) };
+      ms.forEach(m => {
+        SAI.forEach(i => {
+          if (isCardRow(i) && hasTx(m, i)) txOf(m, i).forEach(x => add(x.c, x.v, true));
+          else if (i === 'itau') add(CAT_CARTAO, val('itau', m), true);
+          else if (i === 'outs' && hasOut(m)) outTx(m).forEach(x => add(x.c, x.v, false));
+          else add(S.rowcat[i] || 'Outros', val(i, m), isCardRow(i))
+        })
+      });
+      return Object.entries(g).sort((a, b) => b[1].sum - a[1].sum)
+    }
+    const PARC = /\s*\(?\bparc(?:ela)?\.?\s*\d+\s*(?:\/|de)\s*\d+\)?/gi;
+    const gkey = n => norm(n).replace(PARC, '').replace(/\s+/g, ' ').trim() || norm(n);
+    const gname = n => String(n).replace(PARC, '').replace(/\s{2,}/g, ' ').trim() || String(n);
+    /* soma por nome: ex. todos os "Financiamento" do período viram uma linha só */
+    function catItems(c, ms) {
+      const G = new Map();
+      const add = (key, n, v, src, sub, id) => { let o = G.get(key); if (!o) { o = { n, v: 0, k: 0, src, sub, id }; G.set(key, o) } o.v = r2(o.v + v); o.k++ };
+      ms.forEach(m => {
+        SAI.forEach(i => {
+          if (isCardRow(i) && hasTx(m, i)) { txOf(m, i).forEach(x => { if (x.c === c) add('c|' + i + '|' + gkey(x.n), gname(x.n), x.v, 'card', x.d || AB[m], i) }); return }
+          if (i === 'itau') { if (c === CAT_CARTAO) { const v = val('itau', m); if (v) add('f|itau', TXT.fatura, v, 'fat', MES[m]) } return }
+          if (i === 'outs' && hasOut(m)) { outTx(m).forEach(x => { if (x.c === c) add('o|' + gkey(x.n), gname(x.n), x.v, 'out', MES[m]) }); return }
+          if ((S.rowcat[i] || 'Outros') !== c) return; const v = val(i, m); if (v) add('r|' + i, DEF[i].l, v, 'row', MES[m])
+        })
+      });
+      return [...G.values()].sort((a, b) => b.v - a.v).slice(0, 5)
+    }
+    function itemSub(x) {
+      if (x.src === 'out') return x.k === 1 ? x.sub + ' · Outros' : x.k + ' lançamentos · Outros';
+      if (x.src === 'card') return x.k === 1 ? x.sub + ' · ' + DEF[x.id].l : x.k + ' lançamentos · ' + DEF[x.id].l;
+      if (x.src === 'fat') return x.k === 1 ? x.sub : x.k + ' faturas';
+      return x.k === 1 ? x.sub : x.k + ' meses'
+    }
+    function top5HTML(c, ms) {
+      const it = catItems(c, ms);
+      return `<div class="top5">${it.map(x => `<div class="t"><span>${esc(x.n)}<small>${esc(itemSub(x))}</small></span><b>${fmtN(x.v)}</b></div>`).join('')}</div>`
+    }
+    function catEvo(c) {
+      const W = 400, H = 170, pl = 44, pb = 22, pt = 12, gw = (W - pl) / 12, col = CCOL[c] || CCOL.Outros;
+      const k = []; for (let m = 0; m < 12; m++) { if (val('totS', m) == null) continue; const e = catTotals([m]).find(x => x[0] === c); k.push([m, e ? e[1].sum : 0]) }
+      const nz = k.filter(p => p[1] !== 0).map(p => p[0]); if (!nz.length) return '';
+      const lo = Math.min(...nz), hi = Math.max(...nz); for (let j = k.length - 1; j >= 0; j--)if (k[j][0] < lo || k[j][0] > hi) k.splice(j, 1);
+      const avg = r2(k.reduce((a, p) => a + p[1], 0) / k.length);
+      let mx = Math.max(100, ...k.map(p => p[1])); const step = Math.pow(10, Math.floor(Math.log10(mx))); mx = Math.ceil(mx / step) * step;
+      const y = v => pt + (H - pt - pb) * (1 - Math.max(0, v) / mx), x = m => pl + m * gw + gw / 2;
+      let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolução de ${esc(c)} em ${Y}">`;
+      [0, .5, 1].forEach(f => { const v = mx * f; s += `<line x1="${pl}" x2="${W}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end">${nf0.format(v)}</text>` });
+      if (typeof ui.focus === 'number' && k.some(p => p[0] === ui.focus)) s += `<rect x="${pl + ui.focus * gw + 2}" y="${pt}" width="${gw - 4}" height="${H - pt - pb}" fill="var(--hl)" rx="4"/>`;
+      if (k.length > 1) s += `<line x1="${pl}" x2="${W}" y1="${y(avg)}" y2="${y(avg)}" stroke="${col}" stroke-opacity=".55" stroke-dasharray="4 4"/>`;
+      s += `<polyline fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="${k.map(p => x(p[0]) + ',' + y(p[1])).join(' ')}"/>`;
+      k.forEach(p => s += `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="4.5" fill="${col}"/>`);
+      for (let m = 0; m < 12; m++)s += `<text x="${x(m)}" y="${H - 6}" text-anchor="middle">${AB[m]}</text>`;
+      k.forEach(p => s += `<rect x="${pl + p[0] * gw}" y="${pt}" width="${gw}" height="${H - pt - pb}" fill="#000" fill-opacity="0" data-tip="${esc(MES[p[0]])}|${esc(c)}: ${fmtR(p[1])}"/>`);
+      return `<div class="catev"><h4>Evolução de ${esc(c)} em ${Y}</h4><div class="st"><span>Média por mês <b>${fmtR(avg)}</b></span></div>${s}</svg></div>`
+    }
+    /* composição da reserva no mês m: só linhas com valor (>0), maior primeiro */
+    const RESCOL = ['#74A7F5', '#E58A5A', '#4FC3A1', '#E5B94E', '#E287B0', '#9B8CF0', '#7BC96F', '#C7C2B8'];
+    function resComp(m) {
+      const it = RES.map((id, i) => ({ id, nome: DEF[id].l, v: val(id, m), cor: RESCOL[i % RESCOL.length] })).filter(x => typeof x.v === 'number' && x.v > 0);
+      const total = r2(it.reduce((a, x) => a + x.v, 0));
+      it.forEach(x => x.pct = total ? x.v / total * 100 : 0);
+      return { total, itens: it.sort((a, b) => b.v - a.v) }
+    }
+    function compHTML(m) {
+      const c = resComp(m);
+      if (!c.itens.length) return `<div class="empty">Sem reservas em ${MES[m].toLowerCase()}.</div>`;
+      return `<div class="comp"><div class="ct"><span>Total em ${MES[m].toLowerCase()}</span><b>${fmtR(c.total)}</b></div><div class="seg">${c.itens.map(x => `<i style="flex:${x.v};background:${x.cor}" data-tip="${esc(x.nome)}|${fmtR(x.v)}|${x.pct.toFixed(1).replace('.', ',')}%"></i>`).join('')}</div><div class="cl">${c.itens.map(x => `<div class="cw"><span class="dot" style="background:${x.cor}"></span><span class="nm">${esc(x.nome)}</span><span class="pc">${x.pct.toFixed(1).replace('.', ',')}%</span><span class="v">${fmtN(x.v)}</span></div>`).join('')}</div></div>`
+    }
+    const RESPAN = [
+      ['rs_kpi', 'grid', 'Indicadores', 'Saldo, entradas, saídas, a pagar e reservas'],
+      ['rs_bar', 'chart', 'Entradas e saídas', 'Comparativo mês a mês'],
+      ['rs_comp', 'vault', 'Composição da reserva', 'Como o saldo do mês se divide entre as contas'],
+      ['rs_res', 'vault', 'Evolução das reservas', 'Some quando o módulo de reservas está oculto'],
+      ['rs_cat', 'tag', 'Gastos por categoria', 'Distribuição das saídas do período']
+    ];
+    const panHidden = k => !!(S.mods[k] && S.mods[k].hidden);
+    const panelsHTML = () => RESPAN.map(([k, i, t, d]) => `<div class="prow${panHidden(k) ? ' off' : ''}"><span class="pic"><svg class="i" aria-hidden="true"><use href="#i-${i}"/></svg></span><div class="pt"><b>${t}</b><span>${d}</span></div><button type="button" class="tg" role="switch" aria-checked="${!panHidden(k)}" aria-label="${t}" data-pv="${k}"></button></div>`).join('');
+    const panCount = () => { const n = RESPAN.filter(([k]) => !panHidden(k)).length; $('#pansSt').textContent = `${n} de ${RESPAN.length} painéis visíveis` };
+    document.addEventListener('click', e => {
+      const b = e.target.closest('[data-pv]'); if (!b) return;
+      const k = b.dataset.pv, on = b.getAttribute('aria-checked') !== 'true';
+      (S.mods[k] = S.mods[k] || {}).hidden = !on;
+      b.setAttribute('aria-checked', on); b.closest('.prow').classList.toggle('off', !on);
+      panCount(); save(); rResumo()
+    });
+    function rResumo() {
+      const all = ui.focus === 'all', m = all ? null : ui.focus;
+      const E = all ? aggVal('totE', 'S') : val('totE', m), Sd = all ? aggVal('totS', 'S') : val('totS', m), Sl = all ? aggVal('saldo', 'S') : val('saldo', m), Ab = all ? aggVal('aberto', 'S') : val('aberto', m);
+      let lastR = 0; for (let k = 0; k < 12; k++)if (val('totR', k) != null) lastR = k; const pm = all ? lastR : m, P = val('totR', pm);
+      let delta = ''; if (!all && m > 0 && val('saldo', m - 1) != null && Sl != null) { const df = r2(Sl - val('saldo', m - 1)); delta = `${df >= 0 ? '+' : '−'}${fmtR(Math.abs(df))} em relação a ${MES[m - 1].toLowerCase()}` }
+      const ms = all ? [...Array(12).keys()] : [m], g = catTotals(ms), tot = g.reduce((a, [, x]) => a + Math.max(x.sum, 0), 0) || 1, CC = c => CCOL[c] || CCOL.Outros;
+      const on = k => !panHidden(k), modOn = !(S.mods.res && S.mods.res.hidden), resOn = on('rs_res') && modOn, compOn = on('rs_comp') && modOn, grpRes = resOn || compOn;
+      const topOn = on('rs_kpi') || on('rs_bar');
+      let h = `<div class="cols"${topOn || grpRes || on('rs_cat') ? '' : ' hidden'}><div class="main"><div class="top${on('rs_kpi') && on('rs_bar') ? ' two' : ''}"${topOn ? '' : ' hidden'}><div class="kpis"${on('rs_kpi') ? '' : ' hidden'}><div class="kpi main"><div class="l">${all ? 'Saldo de ' + Y : 'Saldo de ' + MES[m]}</div><div class="v big ${Sl != null && Sl < 0 ? 'neg' : 'pos'}">${fmtR(Sl)}</div>${delta ? `<div class="n">${delta}</div>` : ''}</div>
+  <div class="kpi"><div class="l">Entradas</div><div class="v" style="color:var(--in)">${fmtR(E)}</div></div><div class="kpi"><div class="l">Saídas</div><div class="v" style="color:var(--out)">${fmtR(Sd)}</div></div>
+  <div class="kpi"><div class="l">Ainda a pagar</div><div class="v">${fmtR(Ab)}</div></div><div class="kpi"${S.mods.res && S.mods.res.hidden ? ' hidden' : ''}><div class="l">Reservas em ${MES[pm].toLowerCase()}</div><div class="v">${fmtR(P)}</div></div></div>
+  ${on('rs_bar') ? `<section class="grp grp-fluxo"><article class="card"><header><h3>Entradas e saídas</h3><div class="legend"><span><i style="background:var(--in)"></i>Entradas</span><span><i style="background:var(--out)"></i>Saídas</span></div></header><div class="chart">${barChart()}</div></article></section>` : ''}</div>${!grpRes ? '' : `<section class="grp grp-res"><div class="grp-hd"><h2>Reservas</h2><span>${MES[pm].toLowerCase()}</span></div><div class="grp-body${compOn && resOn ? ' two' : ''}">${compOn ? `<article class="card"><header><h3>Composição da reserva</h3></header>${compHTML(pm)}</article>` : ''}${resOn ? `<article class="card"><header><h3>Evolução das reservas</h3></header><div class="chart">${lineChart()}</div></article>` : ''}</div></section>`}</div>
+  ${on('rs_cat') ? `<article class="card catcard"><header><h3>Gastos por categoria${all ? '' : ' em ' + MES[m].toLowerCase()}</h3></header><div class="catbody">${g.length ? `<div class="catlist">${g.map(([c, x]) => `<div class="crw"><button class="cr" data-act="topcat" data-c="${esc(c)}" aria-expanded="${ui.tc === c}"><span class="dot" style="background:${CC(c)}"></span><span>${esc(c)}</span><span class="v">${fmtN(x.sum)}</span><span class="mini"><i style="width:${Math.round(Math.max(x.sum, 0) / tot * 100)}%;background:${CC(c)}"></i></span>${x.card > 0 && x.card < x.sum ? `<span class="sub">${fmtN(x.card)}${TXT.noCartao}</span>` : ''}</button>${ui.tc === c ? catEvo(c) + top5HTML(c, ms) : ''}</div>`).join('')}</div>` : `<div class="empty">Sem gastos neste período.</div>`}
+  </div></article>` : ''}</div>`;
+      if (!topOn && !grpRes && !on('rs_cat')) h += '<div class="empty">Todos os painéis estão ocultos. Use o lápis para mostrar de novo.</div>';
+      $('#view-resumo').innerHTML = h
+    }
+</script>

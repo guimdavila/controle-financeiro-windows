@@ -1,0 +1,36 @@
+<script>
+    /* ---------- edição DESKTOP (Electron + banco SQLite local) ----------
+       Nada aqui pode ter dados pessoais: este arquivo vai para o computador de qualquer usuário. */
+    const EDICAO = 'desktop';
+    const ANO0 = new Date().getFullYear(); /* o banco nasce com o ano corrente */
+    /* rótulos padrão das linhas base (estrutura.html); as linhas fora da estrutura inicial ficam ocultas pelo seed */
+    const ROTULOS = {
+      sg: 'Salário pessoa 1', g13: '13º pessoa 1', sdg: 'Seguro-desemprego pessoa 1', sn: 'Salário pessoa 2', sdo: 'Renda extra',
+      sdn: 'Seguro-desemprego pessoa 2', fn: 'Férias pessoa 1', pix: 'Pix recebidos', oute: 'Outros', vrg: 'Vale-refeição pessoa 1',
+      vrn: 'Vale-refeição pessoa 2', itau: 'Cartão de crédito', nub: 'Cartão de crédito 2', fin: 'Financiamento', cond: 'Condomínio',
+      luz: 'Luz', seg: 'Seguro do carro', fut: 'Esporte', ing: 'Curso de idiomas', das: 'DAS (MEI)', dia: 'Diarista', man: 'Manicure',
+      cdo: 'Custos de trabalho', ipva: 'IPVA + taxa', iptu: 'IPTU', tlu: 'Taxa de lixo', coren: 'Conselho profissional', outs: 'Outros',
+      net: 'Internet', saude: 'Plano de saúde', res: 'Poupança banco 1', bb: 'Investimento banco 2', sant: 'Conta banco 3',
+      caixa: 'Poupança forçada', viag: 'Reserva para viagem', resf: 'Reserva custos fixos', gta: 'Reserva para compras',
+      binv: 'Investido', bsal: 'Saldo atual', pg: 'Pessoa 1', pn: 'Pessoa 2'
+    };
+    /* categorias de sistema das linhas de cartão sem detalhe ("" = não existe nesta edição) */
+    const CAT_CARTAO = 'Cartão de crédito (sem detalhe)', CAT_CARTAO2 = '';
+    /* oculta a linha "Bitcoin (saldo atual)" das reservas enquanto o módulo Bitcoin estiver oculto */
+    const BTC_SEGUE_MODULO = true;
+    /* linhas base excluídas que não aparecem em "Linhas excluídas" para restaurar: as de Mês a mês fora da
+       estrutura inicial (lá dá para adicionar linhas novas). Reservas e FGTS continuam restauráveis
+       ("Investimento banco 2", "Pessoa 2"…), pois lá não existe "adicionar linha". */
+    const SEM_RESTAURAR = ['sdg', 'sn', 'sdo', 'sdn', 'pix', 'vrg', 'vrn', 'nub', 'cond', 'seg', 'fut', 'ing', 'das', 'dia', 'man', 'cdo', 'ipva', 'iptu', 'tlu', 'coren', 'outs'];
+    const TXT = {
+      salvo: 'Salvo às ', erroSalvar: 'Erro ao salvar os dados', carregando: 'Carregando dados…',
+      erroLer: 'Erro ao ler os dados: ', naoLeu: 'Não foi possível ler os dados', vazio: '',
+      reset: 'Apagar TUDO o que foi preenchido (todos os anos) e começar do zero?', restaurar: 'Substituir TODOS os dados por este backup?',
+      normSalvas: 'Regras salvas às ', fatura: 'Fatura do cartão de crédito', noCartao: ' no cartão de crédito', cartaoFixo: 'Esta é sempre uma linha de cartão de crédito'
+    };
+    let CATS = ['Supermercado', 'Ecommerce', 'Deliverys', 'Restaurante', 'Transporte', 'Farmácia', 'Atividade Física', 'Moradia', 'Educação', 'Entretenimento', 'Assinatura de streaming', 'Viagem', 'Outros'];
+    let CCOL = { 'Supermercado': '#2F8F6B', 'Ecommerce': '#D9822B', 'Deliverys': '#C8452F', 'Restaurante': '#B5546B', 'Transporte': '#3F6FB5', 'Farmácia': '#1E9BB0', 'Atividade Física': '#7A9A2A', 'Moradia': '#8B6B4A', 'Educação': '#7A5BB5', 'Entretenimento': '#D1A31F', 'Assinatura de streaming': '#A24FB0', 'Viagem': '#2F9E8F', 'Outros': '#7B8794', 'Impostos e taxas': '#5B6B8C', 'Saúde': '#C2647E', 'Serviços': '#B8864B', 'Cartão de crédito (sem detalhe)': '#EC7000' };
+    let EXTRA = ['Impostos e taxas', 'Saúde', 'Serviços', 'Cartão de crédito (sem detalhe)'];
+    let ALLCATS = [...CATS, ...EXTRA.slice(0, 3)];
+    const ROWCAT = { nub: 'Cartão de crédito (sem detalhe)', fin: 'Moradia', cond: 'Moradia', luz: 'Moradia', seg: 'Transporte', fut: 'Atividade Física', ing: 'Educação', das: 'Impostos e taxas', dia: 'Serviços', man: 'Serviços', cdo: 'Serviços', ipva: 'Impostos e taxas', iptu: 'Impostos e taxas', tlu: 'Impostos e taxas', coren: 'Impostos e taxas', outs: 'Outros', net: 'Moradia', saude: 'Saúde' };
+</script>

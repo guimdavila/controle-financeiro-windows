@@ -1,0 +1,98 @@
+<script>
+    function applyCats(list) {
+      if (!list || !list.length) return;
+      const on = list.filter(c => c.ativo && !/^#[0-9a-f]{3,8}$/i.test(c.nome));
+      CATS = on.filter(c => c.grupo === 'cartao').map(c => c.nome);
+      const linha = on.filter(c => c.grupo === 'linha').map(c => c.nome);
+      EXTRA = [...linha, ...on.filter(c => c.grupo === 'sistema').map(c => c.nome)];
+      ALLCATS = [...CATS, ...linha];
+      CCOL = {}; list.forEach(c => CCOL[c.nome] = c.cor); if (!CCOL.Outros) CCOL.Outros = '#7B8794';
+      buildCatn()
+    }
+    function mergeCats() {
+      const seen = new Set(), ovs = {};
+      const drop = (a, o) => { const i = a.indexOf(o); if (i >= 0) a.splice(i, 1) };
+      const repl = (a, o, n) => { const i = a.indexOf(o); if (i >= 0) a[i] = n };
+      Object.values(DB.years).forEach(y => {
+        (y.catsX || []).forEach(c => {
+          if (seen.has(c.n)) return; seen.add(c.n);
+          if (!CATS.includes(c.n)) CATS.push(c.n); if (!ALLCATS.includes(c.n)) ALLCATS.push(c.n); CCOL[c.n] = c.c
+        });
+        Object.entries(y.catOv || {}).forEach(([k, o]) => { if (!ovs[k]) ovs[k] = o })
+      });
+      Object.entries(ovs).forEach(([k, o]) => {
+        if (o.del) { [CATS, ALLCATS, EXTRA].forEach(a => drop(a, k)); return }
+        const nn = o.n || k;
+        if (nn !== k) [CATS, ALLCATS, EXTRA].forEach(a => repl(a, k, nn));
+        CCOL[nn] = o.c || CCOL[k] || CCOL[nn] || CCOL.Outros
+      });
+      try { buildCatn() } catch (e) { }
+    }
+    function eachYear(f) { DB.years[Y] = S; Object.values(DB.years).forEach(y => { y.rowcat = Object.assign({}, ROWCAT, y.rowcat || {}); f(y) }) }
+    function refreshCatModal() { $('#catBody').innerHTML = catModalHTML() }
+    function addCat() {
+      const n = ($('#catN').value || '').trim(), c = $('#catC').value;
+      if (!n) { toast('Informe o nome da categoria'); return }
+      if ([...ALLCATS, ...EXTRA].some(x => norm(x) === norm(n))) { toast('Essa categoria já existe'); return }
+      eachYear(y => { if (y.catOv && y.catOv[n] && y.catOv[n].del) delete y.catOv[n] });
+      (S.catsX = S.catsX || []).push({ n, c }); mergeCats(); save(); render(); refreshCatModal(); toast('Categoria “' + n + '” criada')
+    }
+    function setCat(o, n, c) {
+      eachYear(y => {
+        if (n !== o) {
+          (y.tx || []).forEach(t => { if (t.c === o) t.c = n });
+          (y.outx || []).forEach(t => { if (t.c === o) t.c = n });
+          Object.keys(y.rowcat).forEach(k => { if (y.rowcat[k] === o) y.rowcat[k] = n })
+        }
+        const x = (y.catsX || []).find(z => z.n === o);
+        if (x) { x.n = n; x.c = c }
+        else { y.catOv = y.catOv || {}; const k = Object.keys(y.catOv).find(k => y.catOv[k].n === o) || o; y.catOv[k] = { n, c, del: false } }
+      });
+      [CATS, ALLCATS, EXTRA].forEach(a => { const i = a.indexOf(o); if (i >= 0) a[i] = n });
+      if (n !== o) delete CCOL[o]; CCOL[n] = c;
+      buildCatn(); save(); render(); refreshCatModal()
+    }
+    function delCat(n) {
+      if (n === 'Outros') return;
+      if (!confirm('Excluir a categoria “' + n + '”? Os lançamentos dela passam para “Outros”.')) return;
+      eachYear(y => {
+        (y.tx || []).forEach(t => { if (t.c === n) t.c = 'Outros' });
+        (y.outx || []).forEach(t => { if (t.c === n) t.c = 'Outros' });
+        Object.keys(y.rowcat).forEach(k => { if (y.rowcat[k] === n) y.rowcat[k] = 'Outros' });
+        const i = (y.catsX || []).findIndex(z => z.n === n);
+        if (i >= 0) y.catsX.splice(i, 1);
+        else { y.catOv = y.catOv || {}; const k = Object.keys(y.catOv).find(k => y.catOv[k].n === n) || n; y.catOv[k] = { n: k, c: '', del: true } }
+      });
+      [CATS, ALLCATS, EXTRA].forEach(a => { const i = a.indexOf(n); if (i >= 0) a.splice(i, 1) });
+      delete CCOL[n]; buildCatn(); save(); render(); refreshCatModal(); toast('Categoria “' + n + '” excluída')
+    }
+    function catModalHTML() {
+      const p = ui.catPane || '1', rows = SAI.filter(i => i !== 'itau'), col = c => CCOL[c] || CCOL.Outros;
+      const tabs = `<div class="tabs2" role="tablist"><button role="tab" data-act="catpane" data-p="1" aria-selected="${p === '1'}">Categorias</button><button role="tab" data-act="catpane" data-p="2" aria-selected="${p === '2'}">Gastos fixos</button></div>`;
+      const cats = `<section class="pane" id="paneCats"><header><h4>Categorias <span>${ALLCATS.length}</span></h4></header>
+<div class="newcat"><input type="color" class="sw-in" id="catC" value="#4F8FD0" aria-label="Cor da nova categoria"><input type="text" id="catN" maxlength="40" placeholder="Nova categoria" autocomplete="off" aria-label="Nome da nova categoria"><button class="btn primary sm" data-act="catOk"><svg class="i" aria-hidden="true"><use href="#i-plus" /></svg>Criar</button></div>
+<div class="plist">${ALLCATS.map(c => `<div class="item cat"><input type="color" class="sw-in" data-cc="${esc(c)}" value="${esc(col(c))}" aria-label="Cor de ${esc(c)}"><input type="text" data-cn="${esc(c)}" value="${esc(c)}" maxlength="40" aria-label="Nome da categoria"${c === 'Outros' ? ' readonly title="Categoria padrão: só a cor pode mudar"' : ''}>${c === 'Outros' ? '<span></span>' : `<button class="x" data-act="catdel" data-c="${esc(c)}" aria-label="Excluir ${esc(c)}"><svg class="i" aria-hidden="true"><use href="#i-trash" /></svg></button>`}</div>`).join('')}</div></section>`;
+      const fixos = `<section class="pane" id="paneRows"><header><h4>Gastos fixos <span>${rows.length + 1}</span></h4></header>
+<div class="plist">${rows.map(i => `<div class="item"><span class="dotc" style="background:${esc(col(S.rowcat[i]))}"></span><span class="nm">${esc(DEF[i].l)}</span><label class="chk" title="Linha de cartão de crédito: expansível para anexar a fatura em PDF"><input type="checkbox" data-card="${i}"${isCardRow(i) ? " checked" : ""}> Cartão</label><select data-rc="${i}" aria-label="Categoria de ${esc(DEF[i].l)}">${[...ALLCATS, ...(CAT_CARTAO2 ? [CAT_CARTAO2] : [])].map(c => `<option${c === S.rowcat[i] ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></div>`).join('')}<div class="item"><span class="dotc" style="background:var(--line2)"></span><span class="nm">${esc(DEF.itau.l)}</span><label class="chk" title="${esc(TXT.cartaoFixo)}"><input type="checkbox" checked disabled> Cartão</label><span class="hint2">usa a categoria de cada lançamento</span></div></div></section>`;
+      return tabs + `<div class="panes" data-pane="${p}">` + cats + fixos + '</div>'
+    }
+    document.addEventListener('change', e => {
+      const i = e.target;
+      if (i.dataset.cn !== undefined) {
+        const o = i.dataset.cn, n = i.value.trim();
+        if (n === o) return;
+        if (!n) { i.value = o; toast('O nome não pode ficar vazio'); return }
+        if ([...ALLCATS, ...EXTRA].some(x => x !== o && norm(x) === norm(n))) { i.value = o; toast('Essa categoria já existe'); return }
+        setCat(o, n, CCOL[o] || '#7B8794')
+      } else if (i.dataset.card !== undefined) {
+        const id = i.dataset.card, nTx = S.tx.filter(t => cardTx(t, id)).length;
+        if (i.checked) { if (!S.cards.includes(id)) S.cards.push(id) }
+        else {
+          if (nTx && !confirm('Esta linha tem ' + nTx + ' lançamentos de fatura. Eles ficam guardados, mas deixam de compor o valor da linha. Continuar?')) { i.checked = true; return }
+          S.cards = S.cards.filter(x => x !== id); if (ui.cardId === id) ui.cardOpen = false
+        }
+        save(); render(); refreshCatModal()
+      } else if (i.dataset.cc !== undefined) { setCat(i.dataset.cc, i.dataset.cc, i.value) }
+    });
+
+</script>

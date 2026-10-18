@@ -1,0 +1,92 @@
+<script>
+    /* estado de um ano -> linhas das tabelas */
+    function normYear(ano, Sy) {
+      const o = { LinhasAno: {}, Valores: {}, LancamentosCartao: {}, Pendencias: {}, Notas: {} };
+      const vals = Sy.vals || {}, paid = Sy.paid || {}, cm = Sy.cm || {}, custom = Sy.custom || [], del = Sy.del || [], lbl = Sy.lbl || {}, rc = Sy.rowcat || {};
+      const cmap = {}; custom.forEach(c => cmap[c.id] = c);
+      new Set([...Object.keys(rc), ...Object.keys(lbl), ...del, ...custom.map(c => c.id)]).forEach(id => {
+        const c = cmap[id];
+        o.LinhasAno[id] = { ano, id_linha: id, tipo: c ? c.k : (rowType[id] || ''), nome: c ? c.l : (lbl[id] || ''), categoria: rc[id] || '', personalizada: !!c, excluida: del.includes(id) }
+      });
+
+      // >>> NOVO (6a): categorias criadas e configuração dos módulos <<<
+      (Sy.catsX || []).forEach(c => { const id = 'cat_' + norm(c.n).replace(/[^a-z0-9]+/g, '_'); o.LinhasAno[id] = { ano, id_linha: id, tipo: 'categoria', nome: c.n, categoria: c.c, personalizada: false, excluida: false } });
+      Object.entries(Sy.mods || {}).forEach(([k, m]) => { const id = 'mod_' + k; o.LinhasAno[id] = { ano, id_linha: id, tipo: 'modulo', nome: m.name || '', categoria: m.color || '', personalizada: false, excluida: !!m.hidden } });
+      if (Array.isArray(Sy.cards)) { o.LinhasAno.cartoes_init = { ano, id_linha: 'cartoes_init', tipo: 'cartao', nome: '', categoria: '', personalizada: false, excluida: false }; Sy.cards.forEach(id => { o.LinhasAno['cartao_' + id] = { ano, id_linha: 'cartao_' + id, tipo: 'cartao', nome: id, categoria: '', personalizada: false, excluida: false } }) }
+      Object.entries(Sy.ord || {}).forEach(([k, ids]) => { if (Array.isArray(ids) && ids.length) { const id = 'ord_' + k; o.LinhasAno[id] = { ano, id_linha: id, tipo: 'ordem', nome: ids.join(','), categoria: '', personalizada: false, excluida: false } } });
+      Object.entries(Sy.catOv || {}).forEach(([k, v]) => { const id = 'catov_' + k; o.LinhasAno[id] = { ano, id_linha: id, tipo: 'catov', nome: v.n || k, categoria: v.c || '', personalizada: false, excluida: !!v.del } });
+
+
+      const ids = new Set([...Object.keys(vals), ...Object.keys(paid)]);
+      Object.keys(cm).forEach(k => ids.add(k.split('|')[0]));
+      ids.forEach(id => {
+        for (let m = 0; m < 12; m++) {
+          const raw = vals[id] ? vals[id][m] : null, c = cm[id + '|' + m], p = paid[id] ? paid[id][m] : undefined;
+          const hasV = raw != null && raw !== '', pDiff = p !== undefined && p !== paidDefY(ano, m);
+          if (!hasV && !c && !pDiff) continue;
+          o.Valores[id + '|' + m] = { ano, id_linha: id, mes: m + 1, valor: hasV ? ev(raw) : null, formula: typeof raw === 'string' ? raw : '', pago: p === undefined ? '' : !!p, comentario: c || '' }
+        }
+
+      });
+      (Sy.tx || []).forEach(t => o.LancamentosCartao[t.id] = { ano, id_lancamento: t.id, mes: t.m + 1, descricao: t.n, data: t.d, categoria: t.c, valor: t.v, id_linha: t.card || 'itau' });
+      (Sy.outx || []).forEach(t => o.LancamentosCartao[t.id] = { ano, id_lancamento: t.id, mes: t.m + 1, descricao: t.n, data: 'Outros', categoria: t.c, valor: t.v });
+      (Sy.outex || []).forEach(t => o.LancamentosCartao[t.id] = { ano, id_lancamento: t.id, mes: t.m + 1, descricao: t.n, data: 'Entradas', categoria: '', valor: t.v });
+      (Sy.pend || []).forEach(p => o.Pendencias[p.id] = { ano, id_pendencia: p.id, descricao: p.n, valor: p.v == null ? '' : p.v, observacao: p.o || '', pago: !!p.ok });
+      (Sy.notas || []).forEach(p => o.Notas[p.id] = { ano, id_nota: p.id, descricao: p.n, concluida: !!p.ok });
+      return o
+    }
+    const snapOf = () => { DB.years[Y] = S; const o = {}; Object.keys(DB.years).forEach(y => o[y] = normYear(+y, DB.years[y])); return o };
+
+    /* linhas das tabelas (vindas da planilha) -> estado dos anos */
+    function hydrate(d) {
+      const years = {};
+      const Yr = y => years[y] || (years[y] = { vals: {}, tx: [], outx: [], outex: [], pend: [], notas: [], rowcat: {}, paid: {}, cm: {}, custom: [], del: [], lbl: {}, pg: {} });
+      d.anos.forEach(y => Yr(y));
+      d.linhasAno.forEach(r => {
+        const s = Yr(r.ano), id = r.id_linha;
+        if (r.tipo === 'categoria') { (s.catsX = s.catsX || []).push({ n: String(r.nome), c: r.categoria || '#7B8794' }); return }
+        if (r.tipo === 'modulo') { (s.mods = s.mods || {})[String(id).slice(4)] = { name: String(r.nome || ''), color: r.categoria || '', hidden: r.excluida === true }; return }
+        if (r.tipo === 'cartao') { s.cards = s.cards || []; if (id !== 'cartoes_init') s.cards.push(String(r.nome)); return }
+        if (r.tipo === 'ordem') { (s.ord = s.ord || {})[String(id).slice(4)] = String(r.nome).split(',').filter(Boolean); return }
+        if (r.tipo === 'catov') { (s.catOv = s.catOv || {})[String(id).slice(6)] = { n: String(r.nome || String(id).slice(6)), c: r.categoria || '', del: r.excluida === true }; return }
+        if (r.personalizada === true) s.custom.push({ id, k: r.tipo, l: String(r.nome) });
+        else if (r.nome !== '') s.lbl[id] = String(r.nome);
+        if (r.excluida === true) s.del.push(id);
+        if (r.categoria !== '') s.rowcat[id] = r.categoria
+      });
+      d.valores.forEach(r => {
+        const s = Yr(r.ano), id = r.id_linha, m = r.mes - 1;
+        if (m < 0 || m > 11) return;
+        const raw = r.formula !== '' ? r.formula : (r.valor !== '' ? Number(r.valor) : null);
+        if (raw != null) { (s.vals[id] = s.vals[id] || Array(12).fill(null))[m] = raw }
+        if (r.comentario !== '') s.cm[id + '|' + m] = r.comentario;
+        if (r.pago !== '') { (s.pg[id] = s.pg[id] || {})[m] = r.pago === true }
+      });
+      d.lancamentos.forEach(r => {
+        const s = Yr(r.ano), sid = String(r.id_lancamento), isE = sid.startsWith('oe'), isO = sid.startsWith('ox');
+        (isE ? s.outex : isO ? s.outx : s.tx).push({ id: r.id_lancamento, m: r.mes - 1, n: r.descricao, d: (isO || isE) ? '' : r.data, c: isE ? '' : r.categoria, v: Number(r.valor), ...(!isE && !isO && r.id_linha && r.id_linha !== 'itau' ? { card: r.id_linha } : {}) })
+      });
+      d.pendencias.forEach(r => Yr(r.ano).pend.push({ id: r.id_pendencia, n: r.descricao, v: r.valor === '' ? null : Number(r.valor), o: r.observacao, ok: r.pago === true }));
+      d.notas.forEach(r => Yr(r.ano).notas.push({ id: r.id_nota, n: r.descricao, ok: r.concluida === true }));
+      Object.keys(years).forEach(y => {
+        const s = years[y];
+        Object.keys(s.pg).forEach(id => { const arr = Array.from({ length: 12 }, (_, m) => paidDefY(+y, m)); Object.entries(s.pg[id]).forEach(([m, v]) => arr[+m] = v); s.paid[id] = arr });
+        delete s.pg
+      });
+      return years
+    }
+
+    /* diferença entre o último estado gravado e o atual */
+    function diffSnap(a, b) {
+      const chg = { add: [], delYears: [], up: {}, del: {} }; TAB.forEach(t => { chg.up[t] = []; chg.del[t] = [] });
+      Object.keys(b).forEach(y => { if (!a[y]) chg.add.push(+y) });
+      Object.keys(a).forEach(y => { if (!b[y]) chg.delYears.push(+y) });
+      Object.keys(b).forEach(y => TAB.forEach(t => {
+        const A = (a[y] || {})[t] || {}, B = b[y][t];
+        for (const k in B) if (!A[k] || JSON.stringify(A[k]) !== JSON.stringify(B[k])) chg.up[t].push(B[k]);
+        if (a[y]) for (const k in A) if (!(k in B)) { const r = A[k]; chg.del[t].push(Object.fromEntries(KEYS[t].map(c => [c, r[c]]))) }
+      }));
+      return chg
+    }
+    const noChange = c => !c.add.length && !c.delYears.length && TAB.every(t => !c.up[t].length && !c.del[t].length);
+</script>

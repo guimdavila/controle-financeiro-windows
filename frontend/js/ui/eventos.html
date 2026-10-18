@@ -1,0 +1,214 @@
+<script>
+    document.addEventListener('mousemove', e => {
+      const el = e.target.closest && e.target.closest('[data-tip]'), tp = $('#tip');
+      if (!el) { tp.hidden = true; return } const [h, ...r] = el.dataset.tip.split('|'); tp.innerHTML = '<b>' + h + '</b>' + r.map(x => '<br>' + x).join(''); tp.hidden = false;
+      tp.style.left = Math.max(8, Math.min(innerWidth - tp.offsetWidth - 8, e.clientX + 14)) + 'px'; tp.style.top = (e.clientY + 16) + 'px'
+    });
+    /* abre/fecha as colunas extras do Total (classe em vez de :has(), que reavalia a tabela inteira a cada hover) */
+    let xT;
+    const xClose = w => { clearTimeout(xT); xT = setTimeout(() => w.classList.remove('xo'), 140) };
+    document.addEventListener('mouseover', e => {
+      const w = e.target.closest && e.target.closest('.blk.mes .wrap'); if (!w) return;
+      if (e.target.closest('.agg')) { clearTimeout(xT); w.classList.add('xo') } else if (w.classList.contains('xo')) xClose(w)
+    });
+    document.addEventListener('mouseout', e => {
+      const w = e.target.closest && e.target.closest('.blk.mes .wrap');
+      if (w && w.classList.contains('xo') && !(e.relatedTarget && w.contains(e.relatedTarget))) xClose(w)
+    });
+    document.addEventListener('contextmenu', e => { const td = e.target.closest && e.target.closest('td[data-cm]'); if (td) { e.preventDefault(); showComment(td.dataset.cm, +td.dataset.m, true) } });
+    document.addEventListener('click', e => {
+      const pb = e.target.closest('[data-pop]');
+      $$('.pop').forEach(p => { const open = !!pb && p.id === pb.dataset.pop && p.hidden; p.hidden = !open; const t = document.querySelector(`[data-pop="${p.id}"]`); if (t) t.setAttribute('aria-expanded', open) });
+      if (pb) return;
+      const b = e.target.closest('[data-act]'); if (!b) return; const a = b.dataset.act, id = b.dataset.id;
+      switch (a) {
+                case 'cats': refreshCatModal(); $('#cat').showModal(); break;
+        case 'catClose': $('#cat').close(); break;
+        case 'catpane': ui.catPane = b.dataset.p; refreshCatModal(); break;
+        case 'catdel': delCat(b.dataset.c); break;
+        case 'catOk': addCat(); break;
+        case 'pans': $('#pansList').innerHTML = panelsHTML(); panCount(); $('#pans').showModal(); break;
+        case 'pansClose': $('#pans').close(); break;
+        case 'mods': $('#modsList').innerHTML = modsHTML(); $('#mods').showModal(); break;
+        case 'modsClose': $('#mods').close(); break;
+        case 'modclear': clearMod(b.dataset.k); break;
+        case 'modxlsx': exportMod(b.dataset.k); break;
+        case 'tab': ui.tab = b.dataset.t; render(); break;
+        case 'focus': ui.focus = b.dataset.f === 'all' ? 'all' : +b.dataset.f; if (ui.focus !== 'all') ui.cm = ui.om = ui.oem = ui.focus; render(); break;
+        case 'togglecard': if (ui.cardOpen && ui.cardId === id) ui.cardOpen = false; else { ui.cardOpen = true; ui.cardId = id || 'itau'; if (ui.focus !== 'all') ui.cm = ui.focus } render(); break;
+        case 'toggleouts': ui.outsOpen = !ui.outsOpen; if (ui.outsOpen) ui.om = ui.focus === 'all' ? curM : ui.focus; render(); break;
+        case 'outs': ui.outsOpen = true; ui.om = +b.dataset.m; render(); $('.outpanel')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); break;
+        case 'om': ui.om = +b.dataset.m; if (ui.focus !== 'all') ui.focus = ui.om; render(); break;
+        case 'addout': addOut(); break;
+        case 'toggleoute': ui.outeOpen = !ui.outeOpen; if (ui.outeOpen) ui.oem = ui.focus === 'all' ? curM : ui.focus; render(); break;
+        case 'oute': ui.outeOpen = true; ui.oem = +b.dataset.m; render(); $('.outpanel')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); break;
+        case 'oem': ui.oem = +b.dataset.m; if (ui.focus !== 'all') ui.focus = ui.oem; render(); break;
+        case 'addoute': addOute(); break;
+        case 'deloute': S.outex = S.outex.filter(t => t.id !== id); save(); render(); break;
+        case 'outeconv': { const m = ui.oem, v = ev(S.vals.oute[m]); if (v == null) break; S.outex.push({ id: newOuteId(), m, n: 'Outros (valor anterior)', v }); S.vals.oute[m] = null; save(); render(); break }
+        case 'delout': S.outx = S.outx.filter(t => t.id !== id); save(); render(); break;
+        case 'outconv': { const m = ui.om, v = ev(S.vals.outs[m]); if (v == null) break; S.outx.push({ id: newOutId(), m, n: 'Outros (valor anterior)', c: 'Outros', v }); S.vals.outs[m] = null; save(); render(); break }
+        case 'card': ui.cardOpen = true; ui.cardId = id || 'itau'; ui.cm = +b.dataset.m; render(); if (S.cm[ui.cardId + '|' + b.dataset.m]) showComment(ui.cardId, +b.dataset.m, false); $('.cardpanel')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); break;
+        case 'cm': ui.cm = +b.dataset.m; if (ui.focus !== 'all') ui.focus = ui.cm; ui.add = false; render(); break;
+        case 'seecard': ui.tab = 'mes'; ui.cardOpen = true; ui.cardId = id || 'itau'; ui.cm = ui.focus === 'all' ? lastTx() : ui.focus; render(); $('.cardpanel')?.scrollIntoView({ block: 'start', behavior: 'smooth' }); break;
+        case 'expand': txOf(ui.cm, ui.cardId).forEach(t => ui.open[ui.cardId + '|' + ui.cm + '|' + t.c] = true); $('#catlist').innerHTML = catListHTML(); break;
+        case 'collapse': Object.keys(ui.open).forEach(k => delete ui.open[k]); ui.q = ''; $('#q').value = ''; $('#catlist').innerHTML = catListHTML(); break;
+        case 'addtx': ui.add = !ui.add; render(); if (ui.add) $('#nd')?.focus(); break;
+        case 'addok': {
+          const n = $('#nn').value.trim(), v = parseBR($('#nv').value); if (!n || v == null) { toast('Informe o estabelecimento e o valor'); break }
+          S.tx.push({ id: 'x' + Date.now().toString(36), m: ui.cm, ...(ui.cardId !== 'itau' ? { card: ui.cardId } : {}), n, d: $('#nd').value.trim(), c: $('#nc').value, v: r2(v) }); ui.add = false; save(); render(); toast('Lançamento incluído'); break
+        }
+        case 'deltx': S.tx = S.tx.filter(t => t.id !== id); save(); render(); break;
+        case 'addln': ui.addln = ui.addln === b.dataset.k ? null : b.dataset.k; render(); if (ui.addln) $('#ln-n')?.focus(); break;
+        case 'addlnok': addLine(b.dataset.k); break;
+        case 'delln': delLine(id); break;
+        case 'delrow': delRow(id); break;
+        case 'restrow': restRow(id); break;
+        case 'year': setYear(+b.dataset.y); break;
+        case 'newyear': openNewYear(); break;
+        case 'yrCancel': $('#yr').close(); break;
+        case 'yrOk': newYearOk(); break;
+        case 'delyear': delYear(); break;
+        case 'delic': imp.rows.splice(+b.dataset.i, 1); renderImp(); break;
+        case 'cmadd': showComment(id, +b.dataset.m, true); break;
+        case 'cmclose': hideComment(); break;
+        case 'cmdel': if (cmKey) { delete S.cm[cmKey]; save(); updateCalcs(); hideComment() } break;
+        case 'topcat': ui.tc = ui.tc === b.dataset.c ? null : b.dataset.c; rResumo(); break;
+        case 'pay': { const m = +b.dataset.m; S.paid[id][m] = !S.paid[id][m]; save(); updateCalcs(); break }
+        case 'payall': { const m = +b.dataset.m, ids = SAI.filter(i => val(i, m) != null); if (!ids.length) break; const all = ids.every(i => S.paid[i][m]); ids.forEach(i => S.paid[i][m] = !all); save(); updateCalcs(); toast(all ? 'Gastos de ' + MES[m] + ' marcados como em aberto' : 'Tudo pago em ' + MES[m]); break }
+        case 'import': openImport(); break;
+        case 'norm': openNorm(); break;
+        case 'normClose': $('#norm').close(); break;
+        case 'normAdd': addNorm(); break;
+        case 'normDel': delNorm(id); break;
+        case 'normfrom': { const r = imp.rows[+b.dataset.i]; if (r) openNorm({ tipo: 'prefixo', padrao: splitParc(r.raw || r.n).base, nome: splitParc(r.n).base, categoria: r.c }); break }
+        case 'impCancel': $('#imp').close(); break;
+        case 'impOk': confirmImport(); break;
+        case 'reload': refresh(true); break;
+        case 'backup': download('controle-financeiro-backup-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify({ app: 'controle-casa', versao: 2, db: (DB.years[Y] = S, DB) }, null, 1), 'application/json'); toast('Backup baixado'); break;
+        case 'restore': $('#restoreFile').click(); break;
+        case 'reset': if (confirm(TXT.reset)) { DB = freshDB(); Y = ANO0; S = DB.years[Y]; migrate(); curM = curMonth(); ui.cm = lastTx(); ui.cardOpen = false; ui.tc = null; save(); render(); toast('Valores originais restaurados') } break;
+        case 'addp': S.pend.push({ id: 'p' + Date.now().toString(36), n: '', v: null, o: '', ok: false }); save(); rPend(); $$('input[data-pf=n]').pop()?.focus(); break;
+        case 'delp': S.pend = S.pend.filter(p => p.id !== id); save(); rPend(); break;
+        case 'addn': S.notas.push({ id: 'n' + Date.now().toString(36), n: '', ok: false }); save(); rPend(); $$('input[data-nf=n]').pop()?.focus(); break;
+        case 'deln': S.notas = S.notas.filter(p => p.id !== id); save(); rPend(); break
+      }
+    });
+    /* reordenar linhas do Mês a mês arrastando a alça (fica dentro do grupo: entrada não vira saída) */
+    let drag = null;
+    const rowGroup = tr => { const g = [tr]; while (g[g.length - 1].nextElementSibling && g[g.length - 1].nextElementSibling.matches('.cardpanel,.outpanel')) g.push(g[g.length - 1].nextElementSibling); return g };
+    document.addEventListener('pointerdown', e => {
+      const gr = e.target.closest && e.target.closest('.grip'); if (!gr || e.button > 0) return;
+      const tr = gr.closest('tr[data-row]'); if (!tr) return;
+      e.preventDefault(); gr.setPointerCapture(e.pointerId); tr.classList.add('drag'); document.body.classList.add('dragging');
+      drag = { tr, g: tr.dataset.g, gr, tb: tr.parentNode }
+    });
+    document.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const { tr, g, tb } = drag, others = [...tb.querySelectorAll(`tr[data-row][data-g="${g}"]`)].filter(r => r !== tr);
+      const before = others.find(r => { const b = r.getBoundingClientRect(); return e.clientY < b.top + b.height / 2 });
+      const grp = rowGroup(tr), tail = others.length ? rowGroup(others[others.length - 1]).pop().nextElementSibling : null;
+      const anchor = before || tail;
+      if (!anchor || grp.includes(anchor) || grp[grp.length - 1].nextElementSibling === anchor) return;
+      grp.forEach(r => tb.insertBefore(r, anchor))
+    });
+    const endDrag = ok => {
+      if (!drag) return; const { tr, g, tb } = drag; drag = null; document.body.classList.remove('dragging'); tr.classList.remove('drag');
+      if (!ok) { render(); return }
+      const ids = [...tb.querySelectorAll(`tr[data-row][data-g="${g}"]`)].map(r => r.dataset.row), id = tr.dataset.row;
+      setOrder(g, ids); $(`.grip[data-grip="${id}"]`)?.focus()
+    };
+    document.addEventListener('pointerup', () => endDrag(true));
+    document.addEventListener('pointercancel', () => endDrag(false));
+    document.addEventListener('keydown', e => {
+      if (drag && e.key === 'Escape') { endDrag(false); return }
+      const gr = e.target.closest && e.target.closest('.grip'); if (!gr || !e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+      e.preventDefault(); const id = gr.dataset.grip; if (moveRow(id, e.key === 'ArrowUp' ? -1 : 1)) $(`.grip[data-grip="${id}"]`)?.focus()
+    });
+    document.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details.cat')) ui.open[d.dataset.k] = d.open }, true);
+    document.addEventListener('focusin', e => {
+      const i = e.target;
+      if (i.matches('input.cell')) { if (S.cm[i.dataset.id + '|' + i.dataset.m]) showComment(i.dataset.id, +i.dataset.m, false); else if (cmKey && document.activeElement !== $('#cmText')) hideComment(); const raw = S.vals[i.dataset.id][+i.dataset.m]; i.value = raw == null ? '' : typeof raw === 'string' ? raw : String(raw).replace('.', ','); i.select() }
+      else if (i.matches('input[data-tv],input[data-ov],input[data-ev],input.money')) { i.select() }
+    });
+    function commitCell(i) {
+      const id = i.dataset.id, m = +i.dataset.m, t = i.value.trim(), old = S.vals[id][m]; let raw;
+      if (t === '') raw = null;
+      else if (t[0] === '=') { raw = t.replace(/,/g, '.'); if (ev(raw) == null) { toast('Fórmula inválida – use só números e + − × ÷'); raw = old } }
+      else { const n = parseBR(t); if (n == null) { toast('Valor inválido'); raw = old } else raw = r2(n) }
+      S.vals[id][m] = raw; save(); i.value = rawDisplay(raw);
+      i.classList.toggle('expr', typeof raw === 'string'); if (typeof raw === 'string') i.title = raw; else i.removeAttribute('title'); updateCalcs()
+    }
+    document.addEventListener('focusout', e => { const i = e.target; if (i.matches && i.matches('input.cell')) commitCell(i) });
+    document.addEventListener('keydown', e => {
+      const i = e.target;
+      if (e.key === 'Enter' && i.id === 'catN') { e.preventDefault(); addCat() }
+      if (e.key === 'Enter' && i.id === 'ln-n') { e.preventDefault(); addLine(ui.addln) }
+      if (e.key === 'Enter' && (i.id === 'on' || i.id === 'ov')) { e.preventDefault(); addOut() }
+      if (e.key === 'Enter' && (i.id === 'en' || i.id === 'ev')) { e.preventDefault(); addOute() }
+      if (e.key === 'Enter' && i.id === 'yrIn') { e.preventDefault(); newYearOk() }
+      if (e.key === 'Enter' && i.matches && i.matches('.lblin,.tx input.n')) { e.preventDefault(); i.blur() }
+      if (e.key === 'Enter' && i.matches && i.matches('input.cell')) {
+        e.preventDefault();
+        const list = $$(`table[data-t="${i.closest('table').dataset.t}"] input.cell[data-m="${i.dataset.m}"]`), k = list.indexOf(i), nx = list[k + (e.shiftKey ? -1 : 1)]; nx ? nx.focus() : i.blur()
+      }
+      if (e.key === 'Escape') $$('.pop').forEach(p => p.hidden = true);
+      if (e.key === 'Escape' && i.id === 'cmText') { hideComment() }
+      if (e.key === 'Escape' && i.matches && i.matches('input.cell')) { i.value = rawDisplay(S.vals[i.dataset.id][+i.dataset.m]); i.blur() }
+    });
+    document.addEventListener('input', e => {
+      const i = e.target;
+      if (i.id === 'cmText' && cmKey) { if (i.value.trim()) S.cm[cmKey] = i.value; else delete S.cm[cmKey]; save(); updateCalcs() }
+      if (i.id === 'q') { ui.q = i.value; $('#catlist').innerHTML = catListHTML() }
+      if (i.id === 'impText') { clearTimeout(analyze.t); analyze.t = setTimeout(analyze, 300) }
+    });
+    document.addEventListener('change', e => {
+      const i = e.target;
+      if (i.id === 'ln-card') { const c = $('#ln-c'); if (c) { c.hidden = i.checked; c.disabled = i.checked } }
+      else if (i.dataset.ln !== undefined) {
+        const id = i.dataset.ln, c = S.custom.find(x => x.id === id), v = i.value.trim();
+        if (!DEF[id]) return; if (!v) { i.value = DEF[id].l; toast('O nome não pode ficar vazio'); return }
+        if (c) c.l = v; else S.lbl[id] = v; DEF[id].l = v; i.value = v; save()
+      }
+      else if (i.dataset.in !== undefined) {
+        const r = imp.rows[+i.dataset.in], v = i.value.trim();
+        if (!r) return; if (!v) { i.value = r.n; toast('O nome não pode ficar vazio'); return }
+        r.n = v; r.edited = true; i.value = v; i.title = v
+      }
+      else if (i.dataset.tn !== undefined) {
+        const t = S.tx.find(x => x.id === i.dataset.tn), v = i.value.trim();
+        if (!t) return; if (!v) { i.value = t.n; toast('O nome não pode ficar vazio'); return }
+        t.n = v; i.value = v; i.title = v; save()
+      }
+      else if (i.dataset.tc) { const t = S.tx.find(x => x.id === i.dataset.tc); t.c = i.value; save(); render() }
+      else if (i.dataset.tv) { const t = S.tx.find(x => x.id === i.dataset.tv), n = parseBR(i.value); if (n == null) { i.value = nf.format(t.v); toast('Valor inválido'); return } t.v = r2(n); save(); render() }
+      else if (i.dataset.on) { const t = S.outx.find(x => x.id === i.dataset.on), v = i.value.trim(); if (!t) return; if (!v) { i.value = t.n; toast('O nome não pode ficar vazio'); return } t.n = v; i.value = v; i.title = v; save() }
+      else if (i.dataset.oc) { const t = S.outx.find(x => x.id === i.dataset.oc); if (t) { t.c = i.value; save(); render() } }
+      else if (i.dataset.ov) { const t = S.outx.find(x => x.id === i.dataset.ov), n = parseBR(i.value); if (!t) return; if (n == null) { i.value = nf.format(t.v); toast('Valor inválido'); return } t.v = r2(n); save(); render() }
+      else if (i.dataset.en) { const t = S.outex.find(x => x.id === i.dataset.en), v = i.value.trim(); if (!t) return; if (!v) { i.value = t.n; toast('O nome não pode ficar vazio'); return } t.n = v; i.value = v; i.title = v; save() }
+      else if (i.dataset.ev) { const t = S.outex.find(x => x.id === i.dataset.ev), n = parseBR(i.value); if (!t) return; if (n == null) { i.value = nf.format(t.v); toast('Valor inválido'); return } t.v = r2(n); save(); render() }
+      else if (i.dataset.rc) { S.rowcat[i.dataset.rc] = i.value; i.closest('.item').querySelector('.dotc').style.background = CCOL[i.value] || CCOL.Outros; save(); rResumo() }
+      else if (i.dataset.ic !== undefined) { imp.rows[+i.dataset.ic].c = i.value; imp.rows[+i.dataset.ic].auto = false; renderImp() }
+      else if (i.dataset.pf) {
+        const p = S.pend.find(x => x.id === i.dataset.id), f = i.dataset.pf;
+        if (f === 'ok') { p.ok = i.checked; i.closest('.li').classList.toggle('done', p.ok) }
+        else if (f === 'v') { const n = parseBR(i.value); p.v = n == null ? null : r2(n); i.value = p.v == null ? '' : nf.format(p.v) }
+        else p[f] = i.value; save(); pendSums()
+      }
+      else if (i.dataset.nf) {
+        const p = S.notas.find(x => x.id === i.dataset.id), f = i.dataset.nf;
+        if (f === 'ok') { p.ok = i.checked; i.closest('.li').classList.toggle('done', p.ok) } else p.n = i.value; save()
+      }
+      else if (i.id === 'impFile' && i.files[0]) readFile(i.files[0]);
+      else if (i.id === 'impText') analyze();
+      else if (i.id === 'restoreFile' && i.files[0]) {
+        i.files[0].text().then(t => {
+          if (!confirm(TXT.restaurar)) { i.value = ''; return } try {
+            const j = JSON.parse(t); let db = null; if (j.db && j.db.years) db = j.db; else { const o = j.estado || j; if (o && o.vals && o.tx) db = { v: 2, cur: 2026, years: { 2026: o } } }
+            if (!db || !Object.keys(db.years).length || !Object.values(db.years).every(y => y && y.vals && y.tx)) throw 0;
+            DB = db; Y = +DB.cur; if (!DB.years[Y]) Y = +Object.keys(DB.years).map(Number).sort((a, b) => a - b)[0]; S = DB.years[Y]; migrate(); curM = curMonth(); ui.cm = lastTx(); ui.cardOpen = false; ui.tc = null; save(); render(); toast('Backup restaurado')
+          } catch (err) { toast('Arquivo de backup inválido') } i.value = ''
+        })
+      }
+    });
+</script>

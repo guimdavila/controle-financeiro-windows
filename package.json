@@ -1,0 +1,48 @@
+{
+  "name": "controle-financeiro-windows",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Controle financeiro da casa — aplicativo para Windows (Electron + banco SQLite local).",
+  "productName": "Controle financeiro",
+  "main": "desktop/main.js",
+  "author": "Controle financeiro",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
+    "desktop:build": "node desktop/build.js",
+    "desktop:dev": "node desktop/build.js && electron .",
+    "desktop:dist:win": "node desktop/build.js && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "@fontsource/bricolage-grotesque": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "jsdom": "^26.1.0",
+    "pdfjs-dist": "3.11.174",
+    "xlsx": "0.18.5"
+  },
+  "build": {
+    "appId": "br.casa.controle-financeiro",
+    "productName": "Controle financeiro",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "package.json",
+      "desktop/main.js",
+      "desktop/preload.js",
+      "desktop/db.js",
+      "desktop/app/**/*"
+    ],
+    "asar": true,
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Controle financeiro"
+    }
+  }
+}

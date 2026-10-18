@@ -1,0 +1,75 @@
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18M9 4v16" /></symbol>
+    <symbol id="i-vault" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="12" cy="12" r="3" /></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" /></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="M7 9l5 5 5-5" /></symbol>
+    <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-4L4 9M4 4v5h5M4 13a8 8 0 0 0 14 4l2-2M20 20v-5h-5" /></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></symbol>
+    <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14" /></symbol>
+    <symbol id="i-upl" viewBox="0 0 24 24"><path d="M12 15V4M7 8l5-5 5 5M5 20h14" /></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" /></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4" /></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8z" /><circle cx="7.5" cy="8.5" r="1" /></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></symbol>
+  </svg>
+
+  <div class="app">
+    <aside class="side">
+      <div class="brand">
+        <h1>Controle da financeiro</h1>
+      </div>
+
+      <div class="menu">
+        <button class="sel" aria-haspopup="true" aria-expanded="false" data-pop="years">
+          <span><small>Ano</small><b id="yearLbl"></b></span>
+          <svg class="i" aria-hidden="true"><use href="#i-chev" /></svg>
+        </button>
+        <div class="pop dn" id="years" role="group" aria-label="Ano" hidden></div>
+      </div>
+
+      <nav class="tabs" role="tablist" aria-label="Seções">
+        <button role="tab" data-act="tab" data-t="resumo"><svg class="i" aria-hidden="true"><use href="#i-chart" /></svg>Resumo</button>
+        <button role="tab" data-act="tab" data-t="mes"><svg class="i" aria-hidden="true"><use href="#i-grid" /></svg>Mês a mês</button>
+        <button role="tab" data-act="tab" data-t="pat"><svg class="i" aria-hidden="true"><use href="#i-vault" /></svg>Reservas e patrimônio</button>
+        <button role="tab" data-act="tab" data-t="pend"><svg class="i" aria-hidden="true"><use href="#i-list" /></svg>Metas de compra</button>
+      </nav>
+
+      <div class="side-foot">
+        <div class="sync">
+          <span class="dot" aria-hidden="true"></span><span id="saved" aria-live="polite"></span>
+          <button data-act="reload" title="Recarregar os dados" aria-label="Recarregar os dados"><svg class="i" aria-hidden="true"><use href="#i-sync" /></svg></button>
+        </div>
+        <div class="menu">
+          <button class="sel" aria-haspopup="true" aria-expanded="false" data-pop="popData">
+            <svg class="i" aria-hidden="true"><use href="#i-db" /></svg><b>Dados</b><svg class="i" aria-hidden="true"><use href="#i-chev" /></svg>
+          </button>
+          <div class="pop up" id="popData" hidden>
+            <button data-act="backup"><svg class="i" aria-hidden="true"><use href="#i-dl" /></svg>Baixar backup</button>
+            <button data-act="restore"><svg class="i" aria-hidden="true"><use href="#i-upl" /></svg>Restaurar backup</button>
+            <button data-act="norm"><svg class="i" aria-hidden="true"><use href="#i-tag" /></svg>Normalização de nomes</button>
+            <hr>
+            <button class="danger" data-act="reset"><svg class="i" aria-hidden="true"><use href="#i-undo" /></svg>Apagar tudo e começar do zero</button>
+            <p>Os dados ficam salvos neste computador. Baixe um backup para guardar uma cópia ou levar para outro computador.</p>
+          </div>
+          <input type="file" id="restoreFile" accept=".json,application/json" hidden>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main">
+      <div class="bar">
+        <h2 id="barTitle"></h2>
+        <div class="months" id="months" role="group" aria-label="Mês em foco"></div>
+        <div id="acts"></div>
+      </div>
+      <main>
+        <section class="view" id="view-resumo"></section>
+        <section class="view" id="view-mes" hidden></section>
+        <section class="view" id="view-pat" hidden></section>
+        <section class="view" id="view-pend" hidden></section>
+      </main>
+    </div>
+  </div>

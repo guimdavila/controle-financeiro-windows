@@ -1,0 +1,29 @@
+<script>
+    const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const nf = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const nf0 = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+    const fmtN = v => v == null ? '–' : nf.format(v), fmtR = v => v == null ? '–' : 'R$ ' + nf.format(v);
+    const fmtP = v => v == null ? '–' : (v * 100).toFixed(1).replace('.', ',') + '%';
+    const r2 = x => Math.round(x * 100) / 100;
+    const norm = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+    /* ---------- números e fórmulas ---------- */
+    function parseBR(s) {
+      s = String(s).replace(/R\$|\s/g, ''); if (!s || s === '-') return null;
+      if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+      else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+      const v = parseFloat(s); return isNaN(v) ? null : v
+    }
+    function ev(raw) {
+      if (raw == null || raw === '') return null; if (typeof raw === 'number') return raw;
+      let s = String(raw).trim();
+      if (s[0] === '=') {
+        s = s.slice(1); if (!/^[0-9+\-*/().\s]+$/.test(s)) return null;
+        try { const v = Function('"use strict";return (' + s + ')')(); return isFinite(v) ? r2(v) : null } catch (e) { return null }
+      }
+      return parseBR(s)
+    }
+    function sumN(a) { a = a.filter(x => x != null); return a.length ? r2(a.reduce((x, y) => x + y, 0)) : null }
+    function download(name, text, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1500) }
+</script>

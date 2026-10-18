@@ -1,0 +1,49 @@
+<script>
+    /* ---------- estrutura ---------- */
+    const IN = (id, l) => ({ id, k: 'in', l: l === undefined ? ROTULOS[id] : l }), SUM = (id, l, of, cls) => ({ id, k: 'sum', l, of, cls: cls || 'tot' }), CALC = (id, l, cls, x) => Object.assign({ id, k: 'calc', l, cls: cls || '' }, x || {});
+    const ENT = ['sg', 'g13', 'sdg', 'sn', 'sdo', 'sdn', 'fn', 'pix', 'oute'];
+    const SAI = ['itau', 'nub', 'fin', 'cond', 'luz', 'seg', 'fut', 'ing', 'das', 'dia', 'man', 'cdo', 'ipva', 'iptu', 'tlu', 'coren', 'outs', 'net', 'saude'];
+    const RES = ['res', 'bb', 'sant', 'caixa', 'btc', 'viag', 'resf', 'gta'];
+    const T = {
+      ent: { title: 'Entradas', rows: [IN('sg'), IN('g13'), IN('sdg'), IN('sn'), IN('sdo'), IN('sdn'), IN('fn'), IN('pix'), IN('oute'), SUM('totE', 'Total', ENT), IN('vrg'), IN('vrn'), SUM('totEV', 'Total + vale', ['totE', 'vrg', 'vrn'])] },
+      sai: { title: 'Saídas', rows: [IN('itau'), IN('nub'), IN('fin'), IN('cond'), IN('luz'), IN('seg'), IN('fut'), IN('ing'), IN('das'), IN('dia'), IN('man'), IN('cdo'), IN('ipva'), IN('iptu'), IN('tlu'), IN('coren'), IN('outs'), IN('net'), IN('saude'), SUM('totS', 'Total', SAI), CALC('saldo', 'Saldo do mês', 'sld big')] },
+      res: { title: 'Reservas e investimentos', stock: 1, rows: [IN('res'), IN('bb'), IN('sant'), IN('caixa'), CALC('btc', 'Bitcoin (saldo atual)'), IN('viag'), IN('resf'), IN('gta'), SUM('totR', 'Total', RES)] },
+      btc: { title: 'Bitcoin', stock: 1, rows: [IN('binv'), CALC('brend', 'Rendimento (%)', '', { pct: 1 }), IN('bsal')] },
+      pes: { title: 'FGTS', stock: 1, rows: [IN('pg'), IN('pn'), SUM('spes', 'Saldo atual', ['pg', 'pn'])] }
+    };
+    const DEF = {}; Object.values(T).forEach(t => t.rows.forEach(r => DEF[r.id] = r));
+    DEF.pago = CALC('pago', 'Já pago'); DEF.aberto = CALC('aberto', 'Em aberto');
+    const BASE = { ent: T.ent.rows.slice(), sai: T.sai.rows.slice() }, BASE_IDS = { ent: ENT.slice(), sai: SAI.slice() };
+    const ORIGL = {}; Object.keys(DEF).forEach(id => ORIGL[id] = DEF[id].l);
+    const ORIGR = {}; Object.keys(T).forEach(k => ORIGR[k] = T[k].rows.slice()); const RES0 = RES.slice();
+    const ORIGT = {}; Object.keys(T).forEach(k => ORIGT[k] = T[k].title); const MODK = ['res', 'btc', 'pes'];
+    let customIds = [];
+    const isDel = id => !!S.del && S.del.includes(id);
+    const canDel = d => d.k === 'in' || d.id === 'btc' || d.id === 'brend';
+    /* monta ENT/SAI e as tabelas com nomes, linhas adicionadas e linhas excluídas (S.lbl, S.custom, S.del) */
+    function applyCustom() {
+      customIds.forEach(id => delete DEF[id]); customIds = [];
+      S.custom = Array.isArray(S.custom) ? S.custom : [];
+      S.del = Array.isArray(S.del) ? S.del : [];
+      S.lbl = S.lbl && typeof S.lbl === 'object' ? S.lbl : {};
+      S.ord = S.ord && typeof S.ord === 'object' ? S.ord : {};
+      Object.keys(ORIGL).forEach(id => { DEF[id].l = S.lbl[id] || ORIGL[id] });
+      [['ent', ENT, 'totE'], ['sai', SAI, 'totS']].forEach(([k, arr, tot]) => {
+        const mine = S.custom.filter(c => c.k === k).map(c => {
+          const r = IN(c.id, c.l); r.custom = true; DEF[c.id] = r; customIds.push(c.id);
+          if (!Array.isArray(S.vals[c.id])) S.vals[c.id] = Array(12).fill(null); return r
+        });
+        const base = BASE[k], i = base.findIndex(r => r.id === tot);
+        /* "Total + vale" só faz sentido com alguma linha de VR */
+        const semVale = r => r.id === 'totEV' && isDel('vrg') && isDel('vrn');
+        const rows = [...base.slice(0, i), ...mine, ...base.slice(i)].filter(r => !isDel(r.id) && !semVale(r)), ti = rows.findIndex(r => r.id === tot);
+        const o = Array.isArray(S.ord[k]) ? S.ord[k] : [], pos = id => { const n = o.indexOf(id); return n < 0 ? 1e9 : n };
+        T[k].rows = [...rows.slice(0, ti).sort((a, b) => pos(a.id) - pos(b.id)), ...rows.slice(ti)];
+        arr.length = 0; arr.push(...[...BASE_IDS[k], ...mine.map(r => r.id)].filter(id => !isDel(id)))
+      });
+      const btcOff = id => id === 'btc' && BTC_SEGUE_MODULO && !!(S.mods && S.mods.btc && S.mods.btc.hidden);
+      RES.length = 0; RES.push(...RES0.filter(id => !isDel(id) && !btcOff(id)));
+      ['res', 'btc', 'pes'].forEach(k => { T[k].rows = ORIGR[k].filter(r => !isDel(r.id) && !btcOff(r.id)) })
+      MODK.forEach(k => { T[k].title = (S.mods[k] && S.mods[k].name) || ORIGT[k] })
+    }
+</script>

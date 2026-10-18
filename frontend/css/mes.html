@@ -1,0 +1,466 @@
+<style>
+    /* entradas x saídas (tabela única) */
+    .wrap.tall {
+      max-height: calc(100vh - 170px)
+    }
+
+    .grid thead th {
+      position: sticky;
+      top: 0;
+      z-index: 3
+    }
+
+    .grid thead th.lbl {
+      z-index: 5
+    }
+
+    .grid tr.sec th.lbl,
+    .grid tr.sec td {
+      font: 700 15px var(--disp);
+      color: var(--ink);
+      height: 38px
+    }
+
+    .grid tr.sec.s-ent th.lbl,
+    .grid tr.sec.s-ent td {
+      background: color-mix(in srgb, var(--in) 24%, var(--surface))
+    }
+
+    .grid tr.sec.s-sai th.lbl,
+    .grid tr.sec.s-sai td {
+      background: color-mix(in srgb, var(--out) 24%, var(--surface))
+    }
+
+    .grid tr.sec.s-ent th.lbl {
+      border-left: 6px solid var(--in)
+    }
+
+    .grid tr.sec.s-sai th.lbl {
+      border-left: 6px solid var(--out)
+    }
+
+    .grid tr.tot.s-ent td,
+    .grid tr.tot.s-ent .lbl {
+      background: color-mix(in srgb, var(--in) 13%, var(--surface))
+    }
+
+    .grid tr.tot.s-sai td,
+    .grid tr.tot.s-sai .lbl {
+      background: color-mix(in srgb, var(--out) 13%, var(--surface))
+    }
+
+    .grid tr.s-ent td.agg {
+      background: color-mix(in srgb, var(--in) 6%, var(--surface))
+    }
+
+    .grid tr.s-sai td.agg {
+      background: color-mix(in srgb, var(--out) 6%, var(--surface))
+    }
+
+    .grid tr.tot.s-ent td.agg {
+      background: color-mix(in srgb, var(--in) 13%, var(--surface))
+    }
+
+    .grid tr.tot.s-sai td.agg {
+      background: color-mix(in srgb, var(--out) 13%, var(--surface))
+    }
+
+    .grid tr.sld td,
+    .grid tr.sld .lbl {
+      background: var(--sunk) !important;
+      font-weight: 700;
+      border-top: 2px solid var(--ink)
+    }
+
+    .grid tr.opn td.num,
+    .grid tr.opn .lbl {
+      color: var(--out);
+      font-weight: 600
+    }
+
+    .grid tr.pgd td.num,
+    .grid tr.pgd .lbl {
+      color: var(--in);
+      font-weight: 600
+    }
+
+    .grid tr.payrow .lbl {
+      color: var(--muted);
+      font-size: 13px
+    }
+
+    .grid tr.payrow td {
+      text-align: center
+    }
+
+    /* pago / em aberto */
+    .pc {
+      position: relative
+    }
+
+    .pc input.cell {
+      padding-left: 30px
+    }
+
+    .pc button.amt {
+      padding-left: 30px
+    }
+
+    .pay {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      border: 1.6px solid var(--muted);
+      background: transparent;
+      padding: 0;
+      opacity: .35;
+      z-index: 1
+    }
+
+    .pay:hover {
+      opacity: 1;
+      border-color: var(--ink)
+    }
+
+    .pc.unpaid {
+      background: color-mix(in srgb, #E3A21A 17%, transparent)
+    }
+
+    .pc.unpaid .pay {
+      opacity: 1;
+      border-color: #C98A0B
+    }
+
+    .pc.paid {
+      background: color-mix(in srgb, var(--in) 11%, transparent)
+    }
+
+    .pc.paid .pay {
+      opacity: 1;
+      background: var(--in);
+      border-color: var(--in)
+    }
+
+    .pc.paid .pay::after {
+      content: "";
+      position: absolute;
+      left: 4.5px;
+      top: 1.5px;
+      width: 4px;
+      height: 8px;
+      border: solid #fff;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg)
+    }
+
+    .pleg {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: var(--muted);
+      margin: -2px 0 10px;
+      align-items: center
+    }
+
+    .pleg i {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: -2px;
+      border: 1.6px solid
+    }
+
+    .pleg .a {
+      border-color: #C98A0B;
+      background: color-mix(in srgb, #E3A21A 30%, transparent)
+    }
+
+    .pleg .b {
+      border-color: var(--in);
+      background: var(--in)
+    }
+
+    .cr .sub {
+      grid-column: 2 / 4;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: -2px
+    }
+
+    .grid tr.sld td,
+    .grid tr.sld .lbl {
+      background: color-mix(in srgb, var(--accent) 22%, var(--surface)) !important;
+      border-top: 2px solid var(--accent)
+    }
+
+    td[data-cm] {
+      position: relative
+    }
+
+    .cmb {
+      position: absolute;
+      right: 2px;
+      top: 2px;
+      width: 15px;
+      height: 15px;
+      border: 0;
+      border-radius: 4px;
+      background: var(--surface);
+      color: var(--muted);
+      padding: 0;
+      opacity: 0;
+      display: grid;
+      place-items: center;
+      z-index: 1
+    }
+
+    td[data-cm]:hover .cmb,
+    td[data-cm]:focus-within .cmb {
+      opacity: .9
+    }
+
+    .cmb:hover {
+      color: var(--accent);
+      opacity: 1
+    }
+
+    td.hascm::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: 0;
+      border-style: solid;
+      border-width: 0 10px 10px 0;
+      border-color: transparent #E3A21A transparent transparent;
+      pointer-events: none
+    }
+
+    td.hascm .cmb {
+      display: none
+    }
+
+    .cmp {
+      position: fixed;
+      right: 16px;
+      top: 130px;
+      width: 300px;
+      max-width: calc(100vw - 32px);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-top: 4px solid #E3A21A;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .2);
+      padding: 12px;
+      z-index: 30
+    }
+
+    .cmp header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 14px
+    }
+
+    .cmp textarea {
+      width: 100%;
+      min-height: 120px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--sunk);
+      padding: 8px;
+      font: inherit
+    }
+
+    .cmp footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted)
+    }
+
+    .tip {
+      position: fixed;
+      pointer-events: none;
+      background: var(--ink);
+      color: var(--bg);
+      padding: 7px 11px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      line-height: 1.45;
+      z-index: 60;
+      white-space: nowrap
+    }
+
+    .chart rect[data-tip]:hover {
+      fill-opacity: .08
+    }
+
+    .chart circle[data-tip] {
+      cursor: default
+    }
+
+    .crw {
+      border-bottom: 1px solid var(--line)
+    }
+
+    .crw:last-child {
+      border-bottom: 0
+    }
+
+    .cr {
+      width: 100%;
+      background: none;
+      border: 0;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 8px 4px
+    }
+
+    .cr:hover {
+      background: var(--sunk)
+    }
+
+    .top5 {
+      padding: 2px 4px 10px 26px
+    }
+
+    .top5 h4 {
+      margin: 0 0 4px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600
+    }
+
+    .top5 .t {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      font-size: 13.5px;
+      padding: 4px 0;
+      border-top: 1px dashed var(--line)
+    }
+
+    .top5 .t small {
+      display: block;
+      color: var(--muted);
+      font-size: 12px
+    }
+
+    /* alça para reordenar linhas arrastando */
+    .grip {
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      width: 16px;
+      height: 29px;
+      color: var(--muted);
+      border-radius: 4px;
+      cursor: grab;
+      opacity: 0;
+      touch-action: none;
+      user-select: none
+    }
+
+    tr[data-row]:hover .grip,
+    .grip:focus-visible {
+      opacity: .75
+    }
+
+    .grip:hover {
+      opacity: 1;
+      color: var(--ink);
+      background: var(--sunk)
+    }
+
+    @media (hover: none) {
+      .grip { opacity: .5 }
+    }
+
+    .grid tr.drag td,
+    .grid tr.drag .lbl {
+      background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+      box-shadow: inset 0 1px 0 var(--accent), inset 0 -1px 0 var(--accent)
+    }
+
+    .grid tr.drag .grip {
+      opacity: 1;
+      cursor: grabbing
+    }
+
+    body.dragging,
+    body.dragging * {
+      cursor: grabbing !important;
+      user-select: none
+    }
+
+    /* Total sempre visível; Média, Ano ant., Var. e Projeção abrem ao passar o mouse.
+       O grupo fica fixo na borda direita, então a expansão sobrepõe os meses.
+       A classe .xo é posta por JS (eventos.html). A largura muda de uma vez só e a
+       animação usa apenas opacity/transform (compositor), sem recalcular a tabela a cada quadro. */
+    .blk.mes .wrap {
+      --xw: 0px
+    }
+
+    .blk.mes .wrap.xo {
+      --xw: 116px
+    }
+
+    .blk.mes .grid .agg {
+      position: sticky;
+      z-index: 1;
+      right: calc(var(--xw) * 4)
+    }
+
+    .blk.mes .grid thead th.agg {
+      z-index: 4
+    }
+
+    .blk.mes .grid .agg.x {
+      width: var(--xw);
+      min-width: var(--xw);
+      max-width: var(--xw);
+      overflow: hidden;
+      padding: 0;
+      border-left-width: 0
+    }
+
+    .blk.mes .wrap.xo .grid .agg.x {
+      border-left-width: 1px;
+      padding-inline: 10px;
+      animation: xin .16s ease-out
+    }
+
+    .blk.mes .wrap.xo .grid thead th.agg.x {
+      padding-inline: 10px
+    }
+
+    @keyframes xin {
+      from { opacity: 0; transform: translateX(28px) }
+      to { opacity: 1; transform: none }
+    }
+
+    .blk.mes .grid .agg.x:nth-last-child(1) { right: 0 }
+    .blk.mes .grid .agg.x:nth-last-child(2) { right: var(--xw) }
+    .blk.mes .grid .agg.x:nth-last-child(3) { right: calc(var(--xw) * 2) }
+    .blk.mes .grid .agg.x:nth-last-child(4) { right: calc(var(--xw) * 3) }
+
+    .blk.mes .wrap.xo .grid .agg {
+      box-shadow: inset 0 0 0 999px color-mix(in srgb, var(--accent) 9%, transparent)
+    }
+
+</style>
