@@ -10,6 +10,10 @@ O app nasce sem nenhum valor e com a estrutura base:
 - **Metas a comprar** — vazio
 - **Categorias** e **Normalização de nomes** — conjunto inicial (`desktop/esquema.json`)
 
+## Baixar o instalador
+
+Pronto para usar: baixe o instalador na página de [Releases](../../releases/latest) e execute.
+
 ## Estrutura
 
 ```

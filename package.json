@@ -43,6 +43,7 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "shortcutName": "Controle financeiro"
-    }
+    },
+    "artifactName": "Controle-financeiro-Setup-${version}.${ext}"
   }
 }
